@@ -23,10 +23,11 @@
  *
  */
 
+#include <Python.h> // Python.h should be always before any system headers
+
 #include <emerald.h>
 #include <engine.h>
 
-#include <Python.h>
 #include <py3cairo.h>
 
 #include "pixmap_icon.h"
@@ -65,6 +66,14 @@ static PyObject* eval_python(char* expr) {
     return PyEval_EvalCode(code, global_dict, global_dict);
 }
 */
+
+static void print_python_error(const char* desc) {
+    fprintf(stderr, "%s\n", desc);
+    if (PyErr_Occurred()) {
+        PyErr_Print();
+    }
+}
+
 void engine_draw_frame (decor_t * d, cairo_t * cr)
 {
     frame_settings *fs = d->fs;
@@ -72,21 +81,41 @@ void engine_draw_frame (decor_t * d, cairo_t * cr)
     window_settings *ws = fs->ws;
     private_ws* pws = ws->engine_ws;
 
-    PyObject* pExtents = Py_BuildValue("(iiii)", ws->win_extents.left, ws->win_extents.top, ws->win_extents.right, ws->win_extents.bottom);
-    PyObject* pSpace = Py_BuildValue("(iiii)", ws->left_space, ws->top_space, ws->right_space, ws->bottom_space);
-    PyObject* pSize = Py_BuildValue("(ii)", d->width, d->height);
-    PyObject* pTitleBarSize = Py_BuildValue("i", ws->titlebar_height);
-
 #if 1
     PyObject* pFunc = pws->func;
     if (pFunc == NULL) {
-        //TODO: What do we do now?
+        //The python-related part of initialization must have failed
+        //TODO: draw some fallback frame
         return;
     }
 
-    PyObject* pyCtx = PycairoContext_FromContext(cr, &PycairoContext_Type, NULL);
+    PyObject* pExtents = Py_BuildValue("(iiii)", ws->win_extents.left, ws->win_extents.top, ws->win_extents.right, ws->win_extents.bottom);
+    if (!pExtents) {
+        print_python_error("Couldn't build extents tuple.");
+    }
+    PyObject* pSpace = Py_BuildValue("(iiii)", ws->left_space, ws->top_space, ws->right_space, ws->bottom_space);
+    if (!pSpace) {
+        print_python_error("Couldn't build space tuple.");
+    }
+    PyObject* pSize = Py_BuildValue("(ii)", d->width, d->height);
+    if (!pSize) {
+        print_python_error("Couldn't build size tuple.");
+    }
+    PyObject* pTitleBarHeight = Py_BuildValue("i", ws->titlebar_height);
+    if (!pTitleBarHeight) {
+        print_python_error("Couldn't build titlebar_height.");
+    }
 
-    PyObject* pArgs = PyTuple_Pack(5, pyCtx, pSize, pSpace, pExtents, pTitleBarSize);
+    PyObject* pyCtx = PycairoContext_FromContext(cr, &PycairoContext_Type, NULL);
+    if (!pyCtx) {
+        // This fool we've just called destroyed our context just because he was unable to wrap it...
+        print_python_error("Couldn't wrap cairo context.");
+    }
+
+    PyObject* pArgs = PyTuple_Pack(5, pyCtx, pSize, pSpace, pExtents, pTitleBarHeight);
+    if (!pArgs) {
+        print_python_error("Couldn't build function argument tuple.");
+    }
     PyObject* pRet = PyObject_CallObject(pFunc, pArgs);
     Py_DECREF(pArgs);
     Py_XDECREF(pRet);
@@ -177,27 +206,34 @@ void init_engine(window_settings * ws)
     wchar_t* argv[] = { L"/home/wolf480/git/pyEmerald/emerald.py" };
     PySys_SetArgv(1, argv);
 
+    //If something goes wrong, we return leaving pws->func null.
+
     PyObject* pName = PyUnicode_FromString("emerald");
     if (pName == NULL) {
-        //TODO: what do we do now?
+        print_python_error("Couldn't create python string for module name.");
         return;
     }
     PyObject* pModule = PyImport_Import(pName);
     Py_DECREF(pName);
     if (pModule == NULL) {
-        //TODO: what do we do now?
+        print_python_error("Couldn't import module.");
         return;
     }
 
-    if (import_cairo() < 0) {
-        //TODO: what do we do now?
+    int err = import_cairo();
+    if (err < 0) {
+        fprintf(stderr, "Couldn't import pycairo C API: %d\n", err);
         return;
     }
 
     PyObject* pFunc = PyObject_GetAttrString(pModule, "draw");
     Py_DECREF(pModule);
-        if (!pFunc || !PyCallable_Check(pFunc)) {
-        //TODO: what do we do now?
+    if (!pFunc) {
+        print_python_error("Missing module function");
+        return;
+    }
+    if (!PyCallable_Check(pFunc)) {
+        fprintf(stderr, "Module has non-callable attribute where function was expected\n");
         return;
     }
 
