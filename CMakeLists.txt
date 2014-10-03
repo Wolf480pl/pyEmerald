@@ -1,0 +1,12 @@
+cmake_minimum_required(VERSION 2.6)
+project(pyemerald)
+
+add_library(pyemerald SHARED pyemerald.c)
+find_package(PythonLibs)
+find_package(PkgConfig)
+pkg_search_module(EMERALD REQUIRED emeraldengine)
+pkg_search_module(PYCAIRO REQUIRED py3cairo)
+message(pycairo ${PYCAIRO_LIBRARIES} ${PYCAIRO_INCLUDE_DIRS})
+message(emerald ${EMERALD_LIBRARIES} ${EMELRAD_INCLUDE_DIRS})
+target_link_libraries(pyemerald ${PYTHON_LIBRARIES} ${EMERALD_LIBRARIES} ${PYCAIRO_LIBRARIES})
+include_directories(pyemerald ${PYTHON_INCLUDE_DIRS} ${EMERALD_INCLUDE_DIRS} ${PYCAIRO_INCLUDE_DIRS})
