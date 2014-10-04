@@ -74,6 +74,58 @@ static void print_python_error(const char* desc) {
     }
 }
 
+static void fallback_draw_frame(decor_t* d, cairo_t* cr) {
+    frame_settings *fs = d->fs;
+    window_settings *ws = fs->ws;
+    gboolean active = d->active;
+
+    double x1, y1, x2, y2;
+
+    x1 = ws->left_space - ws->win_extents.left;
+    y1 = ws->top_space - ws->win_extents.top;
+    x2 = d->width  - ws->right_space  + ws->win_extents.right;
+    y2 = d->height - ws->bottom_space + ws->win_extents.bottom;
+    int top;
+    top = ws->win_extents.top + ws->titlebar_height;
+
+    double m1 = MIN(ws->win_extents.left, ws->win_extents.right);
+    double m2 = MIN(ws->win_extents.top,  ws->win_extents.bottom);
+
+    double border_width = MIN(m1, m2);
+    double border_offset = border_width/2.0;
+
+    cairo_set_line_width (cr, border_width);
+
+    cairo_set_operator (cr, CAIRO_OPERATOR_SOURCE);
+
+    rounded_rectangle (cr,
+            x1 + border_offset,
+            y1 + top - border_offset,
+            x2 - x1 - border_width,
+            y2 - y1 - top,
+            0, NULL, 0);
+    if (active) {
+        cairo_set_source_rgba(cr, 1.0, 1.0, 0.0, 1.0);
+    } else {
+        cairo_set_source_rgba(cr, 0.7, 0.7, 0.0, 1.0);
+    }
+    cairo_stroke (cr);
+
+    // title bar
+    rounded_rectangle (cr,
+            x1,
+            y1,
+            x2 - x1,
+            top,
+            0, NULL, 0);
+    if (active) {
+        cairo_set_source_rgba(cr, 1.0, 0.0, 0.0, 1.0);
+    } else {
+        cairo_set_source_rgba(cr, 0.7, 0.0, 0.0, 1.0);
+    }
+    cairo_fill(cr);
+}
+
 void engine_draw_frame (decor_t * d, cairo_t * cr)
 {
     frame_settings *fs = d->fs;
@@ -81,14 +133,14 @@ void engine_draw_frame (decor_t * d, cairo_t * cr)
     window_settings *ws = fs->ws;
     private_ws* pws = ws->engine_ws;
 
-#if 1
     PyObject* pFunc = pws->func;
     if (pFunc == NULL) {
         //The python-related part of initialization must have failed
-        //TODO: draw some fallback frame
+        fallback_draw_frame(d, cr);
         return;
     }
 
+    // TODO: These error conditions should decref stuff and call the fallback too!
     PyObject* pExtents = Py_BuildValue("(iiii)", ws->win_extents.left, ws->win_extents.top, ws->win_extents.right, ws->win_extents.bottom);
     if (!pExtents) {
         print_python_error("Couldn't build extents tuple.");
@@ -120,54 +172,6 @@ void engine_draw_frame (decor_t * d, cairo_t * cr)
     Py_DECREF(pArgs);
     Py_XDECREF(pRet);
 
-#else
-    double x1, y1, x2, y2;
-
-    x1 = ws->left_space - ws->win_extents.left;
-    y1 = ws->top_space - ws->win_extents.top;
-    x2 = d->width  - ws->right_space  + ws->win_extents.right;
-    y2 = d->height - ws->bottom_space + ws->win_extents.bottom;
-    int top;
-    top = ws->win_extents.top + ws->titlebar_height;
-
-    double m1 = MIN(ws->win_extents.left, ws->win_extents.right);
-    double m2 = MIN(ws->win_extents.top,  ws->win_extents.bottom);
-
-    double border_width = MIN(m1, m2);
-    double border_offset = border_width/2.0;
-
-    cairo_set_line_width (cr, border_width);
-
-    cairo_set_operator (cr, CAIRO_OPERATOR_SOURCE);
-
-    rounded_rectangle (cr,
-            x1 + border_offset,
-            y1 + top - border_offset,
-            x2 - x1 - border_width,
-            y2 - y1 - top,
-            0, NULL, 0);
-    cairo_set_source_alpha_color(cr, &pfs->border);
-    cairo_stroke (cr);
-
-    // title bar
-    if (pfs->title_bar.alpha != 0.0) {
-        rounded_rectangle (cr,
-                x1,
-                y1,
-                x2 - x1,
-                top,
-                0, NULL, 0);
-        cairo_set_source_alpha_color(cr, &pfs->title_bar);
-        cairo_fill(cr);
-    } else {
-        cairo_save(cr);
-        cairo_set_operator (cr, CAIRO_OPERATOR_CLEAR);
-        cairo_rectangle (cr, 0.0, 0.0, d->width, top + y1 - border_width);
-        cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 1.0);
-        cairo_fill(cr);
-        cairo_restore(cr);
-    }
-#endif
 }
 
 void load_engine_settings(GKeyFile * f, window_settings * ws)
