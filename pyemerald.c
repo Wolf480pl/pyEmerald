@@ -34,7 +34,7 @@
 
 #include <config.h>
 
-#define SECT "python_settings"
+#define SECT "pyemerald_settings"
 
 #define LOCAL_SCRIPT_DIR g_get_home_dir(),".emerald/engines",SCRIPT_SUBDIR
 #define SCRIPT_NAME "emerald"
