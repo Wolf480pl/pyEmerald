@@ -220,7 +220,7 @@ void init_engine(window_settings * ws)
     }
 
     const size_t len = strlen(scriptPath);
-    wchar_t scriptPath_w[len];
+    wchar_t scriptPath_w[len + 1];
     mbstowcs(scriptPath_w, scriptPath, len);
 
     wchar_t* argv[] = { scriptPath_w };
