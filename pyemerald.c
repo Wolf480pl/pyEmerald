@@ -32,7 +32,13 @@
 
 #include "pixmap_icon.h"
 
+#include <config.h>
+
 #define SECT "python_settings"
+
+#define LOCAL_SCRIPT_DIR g_get_home_dir(),".emerald/engines",SCRIPT_SUBDIR
+#define SCRIPT_NAME "emerald"
+#define SCRIPT_FILE SCRIPT_NAME".py"
 
 /*
  * color privates
@@ -207,12 +213,22 @@ void init_engine(window_settings * ws)
     ACOLOR(title_bar, 0.0, 0.0, 0.0, 0.0);
 
     Py_Initialize();
-    wchar_t* argv[] = { L"/home/wolf480/git/pyEmerald/emerald.py" };
+
+    gchar* scriptPath = g_strjoin("/", LOCAL_SCRIPT_DIR, SCRIPT_FILE, NULL);
+    if (access(scriptPath, F_OK) != 0) {
+        scriptPath = g_strjoin("/", SCRIPT_DIR, SCRIPT_FILE, NULL);
+    }
+
+    const size_t len = strlen(scriptPath);
+    wchar_t scriptPath_w[len];
+    mbstowcs(scriptPath_w, scriptPath, len);
+
+    wchar_t* argv[] = { scriptPath_w };
     PySys_SetArgv(1, argv);
 
     //If something goes wrong, we return leaving pws->func null.
 
-    PyObject* pName = PyUnicode_FromString("emerald");
+    PyObject* pName = PyUnicode_FromString(SCRIPT_NAME);
     if (pName == NULL) {
         print_python_error("Couldn't create python string for module name.");
         return;
