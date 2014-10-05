@@ -10,3 +10,6 @@ config.h
 *.so
 
 __pycache__
+
+*.cbp
+*.layout
