@@ -132,8 +132,7 @@ static void fallback_draw_frame(decor_t* d, cairo_t* cr) {
     cairo_fill(cr);
 }
 
-void engine_draw_frame (decor_t * d, cairo_t * cr)
-{
+static gboolean python_draw_frame (decor_t* d, cairo_t* cr) {
     frame_settings *fs = d->fs;
     private_fs *pfs = fs->engine_fs;
     window_settings *ws = fs->ws;
@@ -142,42 +141,65 @@ void engine_draw_frame (decor_t * d, cairo_t * cr)
     PyObject* pFunc = pws->func;
     if (pFunc == NULL) {
         //The python-related part of initialization must have failed
-        fallback_draw_frame(d, cr);
-        return;
+        return FALSE;
     }
 
     // TODO: These error conditions should decref stuff and call the fallback too!
     PyObject* pExtents = Py_BuildValue("(iiii)", ws->win_extents.left, ws->win_extents.top, ws->win_extents.right, ws->win_extents.bottom);
     if (!pExtents) {
         print_python_error("Couldn't build extents tuple.");
+        return FALSE; // Don't need to decref anything, haven't succesfully wrapped anything yet
     }
     PyObject* pSpace = Py_BuildValue("(iiii)", ws->left_space, ws->top_space, ws->right_space, ws->bottom_space);
     if (!pSpace) {
         print_python_error("Couldn't build space tuple.");
+        goto fail;
     }
     PyObject* pSize = Py_BuildValue("(ii)", d->width, d->height);
     if (!pSize) {
         print_python_error("Couldn't build size tuple.");
+        goto fail;
     }
     PyObject* pTitleBarHeight = Py_BuildValue("i", ws->titlebar_height);
     if (!pTitleBarHeight) {
         print_python_error("Couldn't build titlebar_height.");
+        goto fail;
     }
 
     PyObject* pyCtx = PycairoContext_FromContext(cr, &PycairoContext_Type, NULL);
     if (!pyCtx) {
         // This fool we've just called destroyed our context just because he was unable to wrap it...
         print_python_error("Couldn't wrap cairo context.");
+        goto fail; // FIXME: This may not work (i.e. the fallback may crash)
     }
 
     PyObject* pArgs = PyTuple_Pack(5, pyCtx, pSize, pSpace, pExtents, pTitleBarHeight);
     if (!pArgs) {
         print_python_error("Couldn't build function argument tuple.");
+        goto fail;
     }
     PyObject* pRet = PyObject_CallObject(pFunc, pArgs);
     Py_DECREF(pArgs);
     Py_XDECREF(pRet);
 
+    return TRUE;
+
+fail:
+    Py_XDECREF(pExtents);
+    Py_XDECREF(pSpace);
+    Py_XDECREF(pSize);
+    Py_XDECREF(pTitleBarHeight);
+    Py_XDECREF(pyCtx);
+
+    return FALSE;
+
+}
+
+void engine_draw_frame (decor_t * d, cairo_t * cr)
+{
+    if (!python_draw_frame(d, cr)) {
+        fallback_draw_frame(d, cr);
+    }
 }
 
 void load_engine_settings(GKeyFile * f, window_settings * ws)
@@ -189,6 +211,55 @@ void load_engine_settings(GKeyFile * f, window_settings * ws)
     //PySys_SetArgv(1, argv);
     //PyObject* pModule = PyImport_Import(pName);
     //Py_DECREF(pName);
+}
+
+static PyObject* init_python() {
+    Py_Initialize();
+
+    gchar* scriptPath = g_strjoin("/", LOCAL_SCRIPT_DIR, SCRIPT_FILE, NULL);
+    if (access(scriptPath, F_OK) != 0) {
+        scriptPath = g_strjoin("/", SCRIPT_DIR, SCRIPT_FILE, NULL);
+    }
+
+    const size_t len = strlen(scriptPath);
+    wchar_t scriptPath_w[len + 1];
+    mbstowcs(scriptPath_w, scriptPath, len);
+
+
+    wchar_t* argv[] = { scriptPath_w };
+    PySys_SetArgv(1, argv);
+
+    PyObject* pName = PyUnicode_FromString(SCRIPT_NAME);
+    if (pName == NULL) {
+        print_python_error("Couldn't create python string for module name.");
+        return NULL;
+    }
+
+    PyObject* pModule = PyImport_Import(pName);
+    Py_DECREF(pName);
+    if (pModule == NULL) {
+        print_python_error("Couldn't import module.");
+        return NULL;
+    }
+
+    int err = import_cairo();
+    if (err < 0) {
+        fprintf(stderr, "Couldn't import pycairo C API: %d\n", err);
+        return NULL;
+    }
+
+    PyObject* pFunc = PyObject_GetAttrString(pModule, "draw");
+    Py_DECREF(pModule);
+    if (!pFunc) {
+        print_python_error("Missing module function");
+        return NULL;
+    }
+    if (!PyCallable_Check(pFunc)) {
+        fprintf(stderr, "Module has non-callable attribute where function was expected\n");
+        return NULL;
+    }
+
+    return pFunc;
 }
 
 void init_engine(window_settings * ws)
@@ -212,52 +283,9 @@ void init_engine(window_settings * ws)
     ACOLOR(border, 0.0, 0.0, 0.0, 1.0);
     ACOLOR(title_bar, 0.0, 0.0, 0.0, 0.0);
 
-    Py_Initialize();
+    //If something goes wrong, pws->func will be null.
 
-    gchar* scriptPath = g_strjoin("/", LOCAL_SCRIPT_DIR, SCRIPT_FILE, NULL);
-    if (access(scriptPath, F_OK) != 0) {
-        scriptPath = g_strjoin("/", SCRIPT_DIR, SCRIPT_FILE, NULL);
-    }
-
-    const size_t len = strlen(scriptPath);
-    wchar_t scriptPath_w[len + 1];
-    mbstowcs(scriptPath_w, scriptPath, len);
-
-    wchar_t* argv[] = { scriptPath_w };
-    PySys_SetArgv(1, argv);
-
-    //If something goes wrong, we return leaving pws->func null.
-
-    PyObject* pName = PyUnicode_FromString(SCRIPT_NAME);
-    if (pName == NULL) {
-        print_python_error("Couldn't create python string for module name.");
-        return;
-    }
-    PyObject* pModule = PyImport_Import(pName);
-    Py_DECREF(pName);
-    if (pModule == NULL) {
-        print_python_error("Couldn't import module.");
-        return;
-    }
-
-    int err = import_cairo();
-    if (err < 0) {
-        fprintf(stderr, "Couldn't import pycairo C API: %d\n", err);
-        return;
-    }
-
-    PyObject* pFunc = PyObject_GetAttrString(pModule, "draw");
-    Py_DECREF(pModule);
-    if (!pFunc) {
-        print_python_error("Missing module function");
-        return;
-    }
-    if (!PyCallable_Check(pFunc)) {
-        fprintf(stderr, "Module has non-callable attribute where function was expected\n");
-        return;
-    }
-
-    pws->func = pFunc;
+    pws->func = init_python();
 }
 
 void fini_engine(window_settings * ws)
