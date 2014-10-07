@@ -180,7 +180,11 @@ static gboolean python_draw_frame (decor_t* d, cairo_t* cr) {
     }
     PyObject* pRet = PyObject_CallObject(pFunc, pArgs);
     Py_DECREF(pArgs);
-    Py_XDECREF(pRet);
+    if (!pRet) {
+        print_python_error("Exception in draw() on the python side.");
+        return FALSE;
+    }
+    Py_DECREF(pRet);
 
     return TRUE;
 
@@ -198,6 +202,7 @@ fail:
 void engine_draw_frame (decor_t * d, cairo_t * cr)
 {
     if (!python_draw_frame(d, cr)) {
+        ((private_ws*) d->fs->ws->engine_ws)->func = NULL; // Don't try python again
         fallback_draw_frame(d, cr);
     }
 }
@@ -211,6 +216,22 @@ void load_engine_settings(GKeyFile * f, window_settings * ws)
     //PySys_SetArgv(1, argv);
     //PyObject* pModule = PyImport_Import(pName);
     //Py_DECREF(pName);
+}
+
+static PyObject* get_python_func(PyObject* module, char* name) {
+
+    PyObject* pFunc = PyObject_GetAttrString(module, name);
+
+    if (!pFunc) {
+        print_python_error("Missing module function");
+        return NULL;
+    }
+    if (!PyCallable_Check(pFunc)) {
+        fprintf(stderr, "Module has non-callable attribute where function was expected\n");
+        return NULL;
+    }
+
+    return pFunc;
 }
 
 static PyObject* init_python() {
@@ -248,18 +269,23 @@ static PyObject* init_python() {
         return NULL;
     }
 
-    PyObject* pFunc = PyObject_GetAttrString(pModule, "draw");
-    Py_DECREF(pModule);
-    if (!pFunc) {
-        print_python_error("Missing module function");
-        return NULL;
-    }
-    if (!PyCallable_Check(pFunc)) {
-        fprintf(stderr, "Module has non-callable attribute where function was expected\n");
+    PyObject* pDrawFunc = get_python_func(pModule, "draw");
+    if (!pDrawFunc) {
         return NULL;
     }
 
-    return pFunc;
+    PyObject* pInitFunc = get_python_func(pModule, "init");
+    if (pInitFunc) {
+        PyObject* ret = PyObject_CallObject(pInitFunc, NULL);
+        if (!ret) {
+            print_python_error("Init failed on python side");
+        } else {
+            Py_DECREF(ret);
+        }
+    }
+
+    Py_DECREF(pModule);
+    return pDrawFunc;
 }
 
 void init_engine(window_settings * ws)
