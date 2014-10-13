@@ -9,6 +9,11 @@ import gi
 gi.require_version("Gdk", "2.0")
 #from gi.repository import Gdk;
 
+wrap_decor = namedtuple("DecorT", "event_windows button_windows button_states tobj_pos tobj_size tobj_item_pos tobj_item_state tobj_item_width" \
+                                  " pixmap buffer_pixmap gc width height client_width client_height decorated active layout name icon" \
+                                  " icon_pixmap icon_pixbuf state actions prop_xid force_quit_dialog fs button_region min_drawn_buttons_region" \
+                                  " draw_only_buttons_region button_last_drawn_state button_fade_info p_active p_active_buffer p_inactive" \
+                                  " p_inactive_buffer button_region_inact only_change_active")
 
 theme_dir = os.path.expanduser("~/.emerald/theme/")
 
@@ -71,10 +76,16 @@ def init():
     script.init()
 
 
-def draw(ctx, size, space, extents, titlebar_height):
+def draw(ctx, size, space, extents, titlebar_height, decor=None):
     width, height = size
     space = convert_ltrb(space)
     extents = convert_ltrb(extents)
+
+    if (decor == None):
+        pass
+    else:
+        print(decor)
+#        print(decor.event_windows)
 
     if (script == None):
         raise Exception("No script")

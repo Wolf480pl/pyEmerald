@@ -41,6 +41,8 @@
 #define SCRIPT_NAME "emerald"
 #define SCRIPT_FILE SCRIPT_NAME".py"
 
+//#define USE_PY_STRUCTSEQ
+
 /*
  * color privates
  */
@@ -51,11 +53,35 @@ typedef struct _private_fs
 } private_fs;
 
 /*
+ * python wrapping privates
+ */
+typedef struct _wrappers
+{
+#ifdef USE_PY_STRUCTSEQ
+    PyTypeObject* decor;
+#else
+    PyObject* decor;
+#endif // USE_PY_STRUCTSEQ
+} wrappers;
+
+/*typedef struct _private_py
+{
+    PyObject* module;
+    PyObject* draw;
+    PyObject* init;
+    wrappers* wrs;
+} private_py
+*/
+
+/*
  * settings privates
  */
 typedef struct _private_ws
 {
-    PyObject* func;
+    PyObject* module;
+    PyObject* draw;
+    PyObject* init;
+    wrappers* wrs;
 } private_ws;
 
 void get_meta_info (EngineMetaInfo * emi)
@@ -65,6 +91,73 @@ void get_meta_info (EngineMetaInfo * emi)
     emi->last_compat = g_strdup("0.0"); // old themes still compatible
     emi->icon = gdk_pixbuf_new_from_inline(-1, my_pixbuf, TRUE, NULL);
 }
+
+static void print_python_error(const char* desc) {
+    fprintf(stderr, "%s\n", desc);
+    if (PyErr_Occurred()) {
+        PyErr_Print();
+    }
+}
+
+static PyObject* get_python_func(PyObject* module, char* name) {
+
+    PyObject* pFunc = PyObject_GetAttrString(module, name);
+
+    if (!pFunc) {
+        print_python_error("Missing module function");
+        return NULL;
+    }
+    if (!PyCallable_Check(pFunc)) {
+        fprintf(stderr, "Module has non-callable attribute where function was expected\n");
+        return NULL;
+    }
+
+    return pFunc;
+}
+
+#ifdef USE_PY_STRUCTSEQ
+static PyStructSequence_Field decor_fields[] = {
+    {"event_windows", ""},
+    {"button_windows", ""},
+    {"button_states", ""},
+    {"tobj_pos",""},
+    {"tobj_size",""},
+    {"tobj_item_pos",""},
+    {"tobj_item_state",""},
+    {"tobj_item_width",""},
+    NULL
+};
+
+static PyStructSequence_Desc decor_desc = {
+    "Decor_T",    /* name */
+    "",           /* doc */
+    decor_fields, /* fields*/
+    8             /* n_in_sequence */
+};
+#endif // USE_PY_STRUCTSEQ
+
+static wrappers* init_wrappers(private_ws* pws) {
+    wrappers* wrs;
+    wrs = malloc(sizeof(wrappers));
+    bzero(wrs, sizeof(wrs));
+
+#ifdef USE_PY_STRUCTSEQ
+    wrs->decor = PyStructSequence_NewType(&decor_desc);
+    if (!wrs->decor) {
+        print_python_error("Couldn't create structseq type for decor");
+    }
+#else
+    wrs->decor = get_python_func(pws->module, "wrap_decor");
+    if (!wrs->decor) {
+        print_python_error("No wrap_decor in the python module");
+        free(wrs);
+        return NULL;
+    }
+#endif // USE_PY_STRUCTSEQ
+
+    return wrs;
+}
+
 /*
 static PyObject* eval_python(char* expr) {
     PyCodeObject* code = (PyCodeObject*) Py_CompileString(expr, "eval", Py_eval_input);
@@ -73,13 +166,6 @@ static PyObject* eval_python(char* expr) {
     return PyEval_EvalCode(code, global_dict, global_dict);
 }
 */
-
-static void print_python_error(const char* desc) {
-    fprintf(stderr, "%s\n", desc);
-    if (PyErr_Occurred()) {
-        PyErr_Print();
-    }
-}
 
 static void fallback_draw_frame(decor_t* d, cairo_t* cr) {
     frame_settings *fs = d->fs;
@@ -133,13 +219,161 @@ static void fallback_draw_frame(decor_t* d, cairo_t* cr) {
     cairo_fill(cr);
 }
 
+#define ARRAY2TUPLE_BEGIN(tuple, n) \
+        PyObject* tuple = PyTuple_New(n); \
+        {\
+            int i; \
+            for (i = 0; i < n; ++i) {
+
+#define ARRAY2TUPLE_END(tuple, element) \
+                PyTuple_SET_ITEM(tuple, i, element); \
+            }\
+        }
+#define ARRAY2TUPLE_FLAT(tuple, buildstr, array, n, desc) \
+        ARRAY2TUPLE_BEGIN(tuple, n) \
+            PyObject* element = Py_BuildValue(buildstr, array[i]); \
+            if (!element) { \
+                print_python_error(desc); \
+                return NULL; \
+            } \
+        ARRAY2TUPLE_END(tuple, element)
+
+//For use in Py_BuildValue
+//#define DICT_ELEM(name) #name , name
+
+#define DICT_ADD_ELEM(dict, elem) \
+        if (PyDict_SetItemString(dict, #elem, elem) < 0) { \
+            return NULL; \
+        }
+
+#define NEW_NONE (Py_INCREF(Py_None), Py_None)
+#define NULL2NONE(var, wrap) var ? wrap : NEW_NONE
+
+static PyObject* wrap_decor(decor_t* d) {
+    wrappers* wrs = ((private_ws*) d->fs->ws->engine_ws)->wrs;
+
+    if (!wrs->decor) {
+        return NULL;
+    }
+
+    ARRAY2TUPLE_BEGIN(event_windows, 3)
+        PyObject* element = Py_BuildValue("(kkk)", d->event_windows[i][0], d->event_windows[i][1], d->event_windows[i][2]);
+        if (!element) {
+            print_python_error("Couldn't create tuple");
+            return NULL;
+        }
+    ARRAY2TUPLE_END(event_windows, element)
+
+    ARRAY2TUPLE_FLAT(button_windows, "k", d->button_windows, B_T_COUNT, "Couldn't wrap long")
+    ARRAY2TUPLE_FLAT(button_states, "I", d->button_states, B_T_COUNT, "Couldn't wrap int")
+
+    ARRAY2TUPLE_FLAT(tobj_pos, "i", d->tobj_pos, 3, "Couldn't wrap int")
+    ARRAY2TUPLE_FLAT(tobj_size, "i", d->tobj_size, 3, "Couldn't wrap int")
+    ARRAY2TUPLE_FLAT(tobj_item_pos, "i", d->tobj_item_pos, 11, "Couldn't wrap int")
+    ARRAY2TUPLE_FLAT(tobj_item_state, "i", d->tobj_item_state, 11, "Couldn't wrap int")
+    ARRAY2TUPLE_FLAT(tobj_item_width, "i", d->tobj_item_width, 11, "Couldn't wrap int")
+    PyObject* pixmap = pygobject_new((GObject*) d->pixmap);
+    PyObject* buffer_pixmap = pygobject_new((GObject*) d->buffer_pixmap);
+    PyObject* gc = pygobject_new((GObject*) d->gc);
+    PyObject* width = Py_BuildValue("i", d->width);
+    PyObject* height = Py_BuildValue("i", d->height);
+    PyObject* client_width = Py_BuildValue("i", d->client_width);
+    PyObject* client_height = Py_BuildValue("i", d->client_height);
+    PyObject* decorated = PyBool_FromLong(d->decorated);
+    PyObject* active = PyBool_FromLong(d->active);
+    PyObject* layout = pygobject_new((GObject*) d->layout);
+    PyObject* name = Py_BuildValue("s", d->name);
+    PyObject* icon = NULL2NONE(d->icon, PycairoPattern_FromPattern(d->icon, NULL));
+    PyObject* icon_pixmap = pygobject_new((GObject*) d->icon_pixmap);
+    PyObject* icon_pixbuf = pygobject_new((GObject*) d->icon_pixbuf);
+    guint* i_state = &(d->state); // GCC will warn us if this enum has different size than uint
+    PyObject* state = Py_BuildValue("I", i_state);
+    guint* i_actions = &(d->actions); // GCC will warn us if this enum has different size than uint
+    PyObject* actions = Py_BuildValue("I", i_actions);
+    PyObject* prop_xid = Py_BuildValue("k", d->prop_xid);
+    PyObject* force_quit_dialog = pygobject_new((GObject*) d->force_quit_dialog);
+    PyObject* fs = NEW_NONE; //TODO
+    //PyObject* draw = sorry, not this time
+    PyObject* button_region = NEW_NONE; //TODO
+    PyObject* min_drawn_buttons_region = NEW_NONE; //TODO
+    PyObject* draw_only_buttons_region = PyBool_FromLong(d->draw_only_buttons_region);
+    ARRAY2TUPLE_FLAT(button_last_drawn_state, "i", d->button_last_drawn_state, B_T_COUNT, "Couldn't wrap int")
+    PyObject* button_fade_info = NEW_NONE; //TODO
+    PyObject* p_active = pygobject_new((GObject*) d->p_active);
+    PyObject* p_active_buffer = pygobject_new((GObject*) d->p_active_buffer);
+    PyObject* p_inactive = pygobject_new((GObject*) d->p_inactive);
+    PyObject* p_inactive_buffer = pygobject_new((GObject*) d->p_inactive_buffer);
+    PyObject* button_region_inact = NEW_NONE; //TODO
+    PyObject* only_change_active = PyBool_FromLong(d->only_change_active);
+
+#ifdef USE_PY_STRUCTSEQ
+    PyObject* decor = PyStructSequence_New(wrs->decor);
+    if (!decor) {
+        print_python_error("Couldn't create decor structsequence.");
+        return NULL;
+    }
+    PyStructSequence_SET_ITEM(decor, 0, event_windows);
+    PyStructSequence_SET_ITEM(decor, 1, button_windows);
+    PyStructSequence_SET_ITEM(decor, 2, button_states);
+    PyStructSequence_SET_ITEM(decor, 3, tobj_pos);
+    PyStructSequence_SET_ITEM(decor, 4, tobj_size);
+    PyStructSequence_SET_ITEM(decor, 5, tobj_item_pos);
+    PyStructSequence_SET_ITEM(decor, 6, tobj_item_state);
+    PyStructSequence_SET_ITEM(decor, 7, tobj_item_width);
+#else
+    PyObject* args = Py_BuildValue("()");
+    PyObject* kw = PyDict_New();
+    DICT_ADD_ELEM(kw, event_windows)
+    DICT_ADD_ELEM(kw, button_windows)
+    DICT_ADD_ELEM(kw, button_states)
+    DICT_ADD_ELEM(kw, tobj_pos)
+    DICT_ADD_ELEM(kw, tobj_size)
+    DICT_ADD_ELEM(kw, tobj_item_pos)
+    DICT_ADD_ELEM(kw, tobj_item_state)
+    DICT_ADD_ELEM(kw, tobj_item_width)
+    DICT_ADD_ELEM(kw, pixmap)
+    DICT_ADD_ELEM(kw, buffer_pixmap)
+    DICT_ADD_ELEM(kw, gc)
+    DICT_ADD_ELEM(kw, width)
+    DICT_ADD_ELEM(kw, height)
+    DICT_ADD_ELEM(kw, client_width)
+    DICT_ADD_ELEM(kw, client_height)
+    DICT_ADD_ELEM(kw, decorated)
+    DICT_ADD_ELEM(kw, active)
+    DICT_ADD_ELEM(kw, layout)
+    DICT_ADD_ELEM(kw, name)
+    DICT_ADD_ELEM(kw, icon)
+    DICT_ADD_ELEM(kw, icon_pixmap)
+    DICT_ADD_ELEM(kw, icon_pixbuf)
+    DICT_ADD_ELEM(kw, state)
+    DICT_ADD_ELEM(kw, actions)
+    DICT_ADD_ELEM(kw, prop_xid)
+    DICT_ADD_ELEM(kw, force_quit_dialog)
+    DICT_ADD_ELEM(kw, fs)
+    DICT_ADD_ELEM(kw, button_region)
+    DICT_ADD_ELEM(kw, min_drawn_buttons_region)
+    DICT_ADD_ELEM(kw, draw_only_buttons_region)
+    DICT_ADD_ELEM(kw, button_last_drawn_state)
+    DICT_ADD_ELEM(kw, button_fade_info)
+    DICT_ADD_ELEM(kw, p_active)
+    DICT_ADD_ELEM(kw, p_active_buffer)
+    DICT_ADD_ELEM(kw, p_inactive)
+    DICT_ADD_ELEM(kw, p_inactive_buffer)
+    DICT_ADD_ELEM(kw, button_region_inact)
+    DICT_ADD_ELEM(kw, only_change_active)
+
+    PyObject* decor = PyObject_Call(wrs->decor, args, kw);
+#endif // USE_PY_STRUCTSEQ
+    return decor;
+}
+
 static gboolean python_draw_frame (decor_t* d, cairo_t* cr) {
     frame_settings *fs = d->fs;
     private_fs *pfs = fs->engine_fs;
     window_settings *ws = fs->ws;
     private_ws* pws = ws->engine_ws;
 
-    PyObject* pFunc = pws->func;
+    PyObject* pFunc = pws->draw;
     if (pFunc == NULL) {
         //The python-related part of initialization must have failed
         return FALSE;
@@ -174,7 +408,13 @@ static gboolean python_draw_frame (decor_t* d, cairo_t* cr) {
         goto fail; // FIXME: This may not work (i.e. the fallback may crash)
     }
 
-    PyObject* pArgs = PyTuple_Pack(5, pyCtx, pSize, pSpace, pExtents, pTitleBarHeight);
+    PyObject* pyDecor = wrap_decor(d);
+    if (!pyDecor) {
+        print_python_error("Couldn't wrap decor.");
+        goto fail;
+    }
+
+    PyObject* pArgs = PyTuple_Pack(6, pyCtx, pSize, pSpace, pExtents, pTitleBarHeight, pyDecor);
     if (!pArgs) {
         print_python_error("Couldn't build function argument tuple.");
         goto fail;
@@ -195,6 +435,7 @@ fail:
     Py_XDECREF(pSize);
     Py_XDECREF(pTitleBarHeight);
     Py_XDECREF(pyCtx);
+    Py_XDECREF(pyDecor);
 
     return FALSE;
 
@@ -203,7 +444,7 @@ fail:
 void engine_draw_frame (decor_t * d, cairo_t * cr)
 {
     if (!python_draw_frame(d, cr)) {
-        ((private_ws*) d->fs->ws->engine_ws)->func = NULL; // Don't try python again
+        ((private_ws*) d->fs->ws->engine_ws)->draw = NULL; // Don't try python again
         fallback_draw_frame(d, cr);
     }
 }
@@ -219,23 +460,7 @@ void load_engine_settings(GKeyFile * f, window_settings * ws)
     //Py_DECREF(pName);
 }
 
-static PyObject* get_python_func(PyObject* module, char* name) {
-
-    PyObject* pFunc = PyObject_GetAttrString(module, name);
-
-    if (!pFunc) {
-        print_python_error("Missing module function");
-        return NULL;
-    }
-    if (!PyCallable_Check(pFunc)) {
-        fprintf(stderr, "Module has non-callable attribute where function was expected\n");
-        return NULL;
-    }
-
-    return pFunc;
-}
-
-static PyObject* init_python() {
+static gboolean init_python(private_ws* pws) {
     #ifdef LIBPY_LINK_HACK
     void* dl = dlopen(LIBPY_SONAME, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
     if (dl) {
@@ -263,22 +488,22 @@ static PyObject* init_python() {
     PyObject* pModule = PyImport_ImportModule(SCRIPT_NAME);
     if (!pModule) {
         print_python_error("Couldn't import module.");
-        return NULL;
+        return FALSE;
     }
 
     int err = import_cairo();
     if (err < 0) {
         fprintf(stderr, "Couldn't import pycairo C API: %d\n", err);
-        return NULL;
+        return FALSE;
     }
     if (!pygobject_init(-1, -1, -1)) {
         print_python_error("Couldn't import PyGObject C API");
-        return NULL;
+        return FALSE;
     }
 
     PyObject* pDrawFunc = get_python_func(pModule, "draw");
     if (!pDrawFunc) {
-        return NULL;
+        return FALSE;
     }
 
     PyObject* pInitFunc = get_python_func(pModule, "init");
@@ -291,8 +516,11 @@ static PyObject* init_python() {
         }
     }
 
-    Py_DECREF(pModule);
-    return pDrawFunc;
+    pws->module = pModule;
+    pws->draw = pDrawFunc;
+    pws->init = pInitFunc;
+
+    return TRUE;
 }
 
 void init_engine(window_settings * ws)
@@ -318,7 +546,9 @@ void init_engine(window_settings * ws)
 
     //If something goes wrong, pws->func will be null.
 
-    pws->func = init_python();
+    if (init_python(pws)) {
+        pws->wrs = init_wrappers(pws);
+    }
 }
 
 void fini_engine(window_settings * ws)
