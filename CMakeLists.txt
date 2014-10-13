@@ -10,14 +10,21 @@ set(SCRIPT_SUBDIR pyEmerald CACHE STRING "Subdirectory inside ENGINE_DIR where o
 set(SCRIPT_DIR "" CACHE STRING "System-wide directory for our python parts (override)")
 mark_as_advanced(SCRIPT_DIR)
 
-configure_file(config.h.in config.h)
-
 find_package(PythonLibs)
 find_package(PkgConfig)
 pkg_search_module(EMERALD REQUIRED emeraldengine)
 pkg_search_module(PYCAIRO REQUIRED py3cairo)
-target_link_libraries(pyemerald ${PYTHON_LIBRARIES} ${EMERALD_LIBRARIES} ${PYCAIRO_LIBRARIES})
-include_directories(pyemerald ${PYTHON_INCLUDE_DIRS} ${EMERALD_INCLUDE_DIRS} ${PYCAIRO_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
+pkg_search_module(PYGOBJECT REQUIRED pygobject-3.0)
+target_link_libraries(pyemerald ${PYTHON_LIBRARIES} ${EMERALD_LIBRARIES} ${PYCAIRO_LIBRARIES} ${PYGOBJECT_LIBRARIES})
+include_directories(pyemerald ${PYTHON_INCLUDE_DIRS} ${EMERALD_INCLUDE_DIRS} ${PYCAIRO_INCLUDE_DIRS} ${PYGOBJECT_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
+
+option(LIBPY_LINK_HACK "Enable workaround for python modules that don't declare dependency on libpython")
+
+if (LIBPY_LINK_HACK)
+    set(LIBPY_SONAME ${PYTHON_LIBRARIES})
+endif(LIBPY_LINK_HACK)
+
+configure_file(config.h.in config.h)
 
 option(LOCAL_INSTALL "Install in ~/.emerald instead of installing system-wide")
 

@@ -29,6 +29,7 @@
 #include <engine.h>
 
 #include <py3cairo.h>
+#include <pygobject.h>
 
 #include "pixmap_icon.h"
 
@@ -235,6 +236,15 @@ static PyObject* get_python_func(PyObject* module, char* name) {
 }
 
 static PyObject* init_python() {
+    #ifdef LIBPY_LINK_HACK
+    void* dl = dlopen(LIBPY_SONAME, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
+    if (dl) {
+        dlclose(dl);
+    } else {
+        fprintf(stderr, "Couldn't promote " LIBPY_SONAME " to global namespace");
+    }
+    #endif // LIBPY_LINK_HACK
+
     Py_Initialize();
 
     gchar* scriptPath = g_strjoin("/", LOCAL_SCRIPT_DIR, SCRIPT_FILE, NULL);
@@ -250,15 +260,8 @@ static PyObject* init_python() {
     wchar_t* argv[] = { scriptPath_w };
     PySys_SetArgv(1, argv);
 
-    PyObject* pName = PyUnicode_FromString(SCRIPT_NAME);
-    if (pName == NULL) {
-        print_python_error("Couldn't create python string for module name.");
-        return NULL;
-    }
-
-    PyObject* pModule = PyImport_Import(pName);
-    Py_DECREF(pName);
-    if (pModule == NULL) {
+    PyObject* pModule = PyImport_ImportModule(SCRIPT_NAME);
+    if (!pModule) {
         print_python_error("Couldn't import module.");
         return NULL;
     }
@@ -266,6 +269,10 @@ static PyObject* init_python() {
     int err = import_cairo();
     if (err < 0) {
         fprintf(stderr, "Couldn't import pycairo C API: %d\n", err);
+        return NULL;
+    }
+    if (!pygobject_init(-1, -1, -1)) {
+        print_python_error("Couldn't import PyGObject C API");
         return NULL;
     }
 

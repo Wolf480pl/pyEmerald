@@ -4,6 +4,11 @@ from collections import namedtuple
 import math
 import os
 import sys
+import gi
+
+gi.require_version("Gdk", "2.0")
+#from gi.repository import Gdk;
+
 
 theme_dir = os.path.expanduser("~/.emerald/theme/")
 
@@ -16,7 +21,10 @@ def make_filename(sect, key=None, ext=None):
     return filename
 
 
-LeftTopRightBottom = namedtuple('LeftTopRightBottom', 'left top right bottom')
+CORNER_TOPLEFT = 1
+CORNER_TOPRIGHT = 2
+CORNER_BOTTOMRIGHT = 4
+CORNER_BOTTOMLEFT = 8
 
 def rounded_rectangle(ctx, x, y, w, h, corner, radius):
     if (radius == 0):
@@ -47,10 +55,7 @@ def rounded_rectangle(ctx, x, y, w, h, corner, radius):
     else:
         ctx.line_to(x, y)
 
-CORNER_TOPLEFT = 1
-CORNER_TOPRIGHT = 2
-CORNER_BOTTOMRIGHT = 4
-CORNER_BOTTOMLEFT = 8
+LeftTopRightBottom = namedtuple('LeftTopRightBottom', 'left top right bottom')
 
 def convert_ltrb(arg):
     left, top, right, bottom = arg;
