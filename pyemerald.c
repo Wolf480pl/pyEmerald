@@ -50,6 +50,7 @@ typedef struct _private_fs
 {
     alpha_color border;
     alpha_color title_bar;
+    PyObject* python_fs;
 } private_fs;
 
 /*
@@ -61,6 +62,10 @@ typedef struct _wrappers
     PyTypeObject* decor;
 #else
     PyObject* decor;
+    PyObject* frame_settings;
+    PyObject* button_region;
+    PyObject* rectangle;
+    PyObject* fade_info;
 #endif // USE_PY_STRUCTSEQ
 } wrappers;
 
@@ -147,9 +152,43 @@ static wrappers* init_wrappers(private_ws* pws) {
         print_python_error("Couldn't create structseq type for decor");
     }
 #else
-    wrs->decor = get_python_func(pws->module, "wrap_decor");
+    wrs->decor = get_python_func(pws->module, "DecorT");
     if (!wrs->decor) {
-        print_python_error("No wrap_decor in the python module");
+        print_python_error("No DecorT in the python module");
+        free(wrs);
+        return NULL;
+    }
+    wrs->frame_settings = get_python_func(pws->module, "FrameSettings");
+    if (!wrs->frame_settings) {
+        print_python_error("No FrameSettings in the python module");
+        Py_DECREF(wrs->decor);
+        free(wrs);
+        return NULL;
+    }
+    wrs->button_region = get_python_func(pws->module, "ButtonRegion");
+    if (!wrs->button_region) {
+        print_python_error("No ButtonRegion in the python module");
+        Py_DECREF(wrs->frame_settings);
+        Py_DECREF(wrs->decor);
+        free(wrs);
+        return NULL;
+    }
+    wrs->rectangle = get_python_func(pws->module, "_wrap_rectangle");
+    if (!wrs->rectangle) {
+        print_python_error("No _wrap_rectangle in the python module");
+        Py_DECREF(wrs->button_region);
+        Py_DECREF(wrs->frame_settings);
+        Py_DECREF(wrs->decor);
+        free(wrs);
+        return NULL;
+    }
+    wrs->fade_info = get_python_func(pws->module, "ButtonFadeInfo");
+    if (!wrs->fade_info) {
+        print_python_error("No ButtonFadeInfo in the python module");
+        Py_DECREF(wrs->rectangle);
+        Py_DECREF(wrs->button_region);
+        Py_DECREF(wrs->frame_settings);
+        Py_DECREF(wrs->decor);
         free(wrs);
         return NULL;
     }
@@ -241,6 +280,7 @@ static void fallback_draw_frame(decor_t* d, cairo_t* cr) {
 //For use in Py_BuildValue
 //#define DICT_ELEM(name) #name , name
 
+//FIXME: don't just return NULL! what about print_python_error? decref?
 #define DICT_ADD_ELEM(dict, elem) \
         if (PyDict_SetItemString(dict, #elem, elem) < 0) { \
             return NULL; \
@@ -248,6 +288,134 @@ static void fallback_draw_frame(decor_t* d, cairo_t* cr) {
 
 #define NEW_NONE (Py_INCREF(Py_None), Py_None)
 #define NULL2NONE(var, wrap) var ? wrap : NEW_NONE
+
+#define ACOLOR2TUPLE(acolor) Py_BuildValue("(dddd)", acolor.color.r, acolor.color.g, acolor.color.b, acolor.alpha)
+
+static PyObject* wrap_framesettings(frame_settings* fs) {
+    wrappers* wrs = ((private_ws*) fs->ws->engine_ws)->wrs;
+
+    if (!wrs->frame_settings) {
+        return NULL;
+    }
+    PyObject* engine_fs = ((private_fs*)fs->engine_fs)->python_fs;
+    PyObject* ws = NEW_NONE; //TODO
+
+    PyObject* button = ACOLOR2TUPLE(fs->button);
+    if (!button) {
+        print_python_error("Couldn't wrap alpha_color");
+    }
+
+    PyObject* button_halo = ACOLOR2TUPLE(fs->button_halo);
+    if (!button_halo) {
+        print_python_error("Couldn't wrap alpha_color");
+    }
+
+    PyObject* text = ACOLOR2TUPLE(fs->text);
+    if (!text) {
+        print_python_error("Couldn't wrap alpha_color");
+    }
+
+    PyObject* text_halo = ACOLOR2TUPLE(fs->text_halo);
+    if (!text_halo) {
+        print_python_error("Couldn't wrap alpha_color");
+    }
+
+    PyObject* args = Py_BuildValue("()");
+    PyObject* kw = PyDict_New();
+    DICT_ADD_ELEM(kw, engine_fs)
+    DICT_ADD_ELEM(kw, ws)
+    DICT_ADD_ELEM(kw, button)
+    DICT_ADD_ELEM(kw, button_halo)
+    DICT_ADD_ELEM(kw, text)
+    DICT_ADD_ELEM(kw, text_halo)
+
+    PyObject* frs = PyObject_Call(wrs->frame_settings, args, kw);
+    return frs;
+}
+
+static PyObject* wrap_fade_info(wrappers* wrs, button_fade_info_t* bfi) {
+    if (!wrs->fade_info) {
+        return NULL;
+    }
+
+    //PyObject* d = Not today...
+    PyObject* cr = NULL2NONE(bfi->cr, PycairoContext_FromContext(bfi->cr, &PycairoContext_Type, NULL));
+    PyObject* y1 = Py_BuildValue("d", bfi->y1);
+    ARRAY2TUPLE_FLAT(counters, "i", bfi->counters, B_T_COUNT, "Couldn't wrap int");
+
+    ARRAY2TUPLE_BEGIN(pulsating, B_T_COUNT)
+        PyObject* element = PyBool_FromLong(bfi->pulsating[i]);
+        if (!element) {
+            print_python_error("Couldn't wrap boolean");
+            return NULL; //FIXME: decref...
+        }
+    ARRAY2TUPLE_END(pulsating, element)
+
+    PyObject* timer = Py_BuildValue("i", bfi->timer);
+    PyObject* first_draw = PyBool_FromLong(bfi->first_draw);
+
+    PyObject* args = Py_BuildValue("()");
+    PyObject* kw = PyDict_New();
+    DICT_ADD_ELEM(kw, cr)
+    DICT_ADD_ELEM(kw, y1)
+    DICT_ADD_ELEM(kw, counters)
+    DICT_ADD_ELEM(kw, pulsating)
+    DICT_ADD_ELEM(kw, timer)
+    DICT_ADD_ELEM(kw, first_draw)
+
+    PyObject* fade_info = PyObject_Call(wrs->fade_info, args, kw);
+    return fade_info;
+}
+
+static PyObject* wrap_rectangle(wrappers* wrs, rectangle_t* r) {
+    if (!wrs->rectangle) {
+        return NULL;
+    }
+
+    PyObject* rect = PyObject_CallFunction(wrs->rectangle, "iiii", r->x1, r->y1, r->x2, r->y2);
+    return rect;
+}
+
+static PyObject* wrap_button_region(wrappers* wrs, button_region_t* br) {
+    if (!wrs->button_region) {
+        return NULL;
+    }
+
+    PyObject* base_x1 = Py_BuildValue("i", br->base_x1);
+    PyObject* base_y1 = Py_BuildValue("i", br->base_y1);
+    PyObject* base_x2 = Py_BuildValue("i", br->base_x2);
+    PyObject* base_y2 = Py_BuildValue("i", br->base_y2);
+    PyObject* glow_x1 = Py_BuildValue("i", br->glow_x1);
+    PyObject* glow_y1 = Py_BuildValue("i", br->glow_y1);
+    PyObject* glow_x2 = Py_BuildValue("i", br->glow_x2);
+    PyObject* glow_y2 = Py_BuildValue("i", br->glow_y2);
+
+    ARRAY2TUPLE_BEGIN(overlap_buttons, B_T_COUNT)
+        PyObject* element = PyBool_FromLong(br->overlap_buttons[i]);
+        if (!element) {
+            print_python_error("Couldn't wrap boolean");
+            return NULL; //FIXME: decref...
+        }
+    ARRAY2TUPLE_END(overlap_buttons, element)
+
+    PyObject* bg_pixmap = pygobject_new((GObject*) br->bg_pixmap);
+
+    PyObject* args = Py_BuildValue("()");
+    PyObject* kw = PyDict_New();
+    DICT_ADD_ELEM(kw, base_x1)
+    DICT_ADD_ELEM(kw, base_y1)
+    DICT_ADD_ELEM(kw, base_x2)
+    DICT_ADD_ELEM(kw, base_y2)
+    DICT_ADD_ELEM(kw, glow_x1)
+    DICT_ADD_ELEM(kw, glow_y1)
+    DICT_ADD_ELEM(kw, glow_x2)
+    DICT_ADD_ELEM(kw, glow_y2)
+    DICT_ADD_ELEM(kw, overlap_buttons)
+    DICT_ADD_ELEM(kw, bg_pixmap)
+
+    PyObject* region = PyObject_Call(wrs->button_region, args, kw);
+    return region;
+}
 
 static PyObject* wrap_decor(decor_t* d) {
     wrappers* wrs = ((private_ws*) d->fs->ws->engine_ws)->wrs;
@@ -292,18 +460,49 @@ static PyObject* wrap_decor(decor_t* d) {
     PyObject* actions = Py_BuildValue("I", i_actions);
     PyObject* prop_xid = Py_BuildValue("k", d->prop_xid);
     PyObject* force_quit_dialog = pygobject_new((GObject*) d->force_quit_dialog);
-    PyObject* fs = NEW_NONE; //TODO
+    PyObject* fs = wrap_framesettings(d->fs);
+    if (!fs) {
+        //FIXME: DECREF everything we've already wrapped... sigh...
+        return NULL;
+    }
     //PyObject* draw = sorry, not this time
-    PyObject* button_region = NEW_NONE; //TODO
-    PyObject* min_drawn_buttons_region = NEW_NONE; //TODO
+    ARRAY2TUPLE_BEGIN(button_region, B_T_COUNT)
+        PyObject* element = wrap_button_region(wrs, &d->button_region[i]);
+        if (!element) {
+            //FIXME: decref..
+            return NULL;
+        }
+    ARRAY2TUPLE_END(button_region, element)
+
+    PyObject* min_drawn_buttons_region = wrap_rectangle(wrs, &d->min_drawn_buttons_region);
+    if (!min_drawn_buttons_region) {
+        //FIXME: decref..
+        return NULL;
+    }
+
     PyObject* draw_only_buttons_region = PyBool_FromLong(d->draw_only_buttons_region);
     ARRAY2TUPLE_FLAT(button_last_drawn_state, "i", d->button_last_drawn_state, B_T_COUNT, "Couldn't wrap int")
-    PyObject* button_fade_info = NEW_NONE; //TODO
+
+    PyObject* button_fade_info = wrap_fade_info(wrs, &d->button_fade_info);
+    if (!button_fade_info) {
+        //FIXME: decref..
+        return NULL;
+    }
+
     PyObject* p_active = pygobject_new((GObject*) d->p_active);
     PyObject* p_active_buffer = pygobject_new((GObject*) d->p_active_buffer);
     PyObject* p_inactive = pygobject_new((GObject*) d->p_inactive);
     PyObject* p_inactive_buffer = pygobject_new((GObject*) d->p_inactive_buffer);
-    PyObject* button_region_inact = NEW_NONE; //TODO
+
+    ARRAY2TUPLE_BEGIN(button_region_inact, B_T_COUNT)
+        PyObject* element = wrap_button_region(wrs, &d->button_region_inact[i]);
+        if (!element) {
+            //FIXME: decref..
+            return NULL;
+        }
+    ARRAY2TUPLE_END(button_region_inact, element)
+
+
     PyObject* only_change_active = PyBool_FromLong(d->only_change_active);
 
 #ifdef USE_PY_STRUCTSEQ
@@ -544,10 +743,16 @@ void init_engine(window_settings * ws)
     ACOLOR(border, 0.0, 0.0, 0.0, 1.0);
     ACOLOR(title_bar, 0.0, 0.0, 0.0, 0.0);
 
-    //If something goes wrong, pws->func will be null.
+    //If something goes wrong, pws->draw will be null.
 
     if (init_python(pws)) {
         pws->wrs = init_wrappers(pws);
+
+        PyObject* pyfs;
+        pyfs = PyDict_New();
+        ((private_fs*)ws->fs_act->engine_fs)->python_fs = pyfs;
+        pyfs = PyDict_New();
+        ((private_fs*)ws->fs_inact->engine_fs)->python_fs = pyfs;
     }
 }
 

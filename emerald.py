@@ -9,11 +9,24 @@ import gi
 gi.require_version("Gdk", "2.0")
 #from gi.repository import Gdk;
 
-wrap_decor = namedtuple("DecorT", "event_windows button_windows button_states tobj_pos tobj_size tobj_item_pos tobj_item_state tobj_item_width" \
+DecorT = namedtuple("DecorT", "event_windows button_windows button_states tobj_pos tobj_size tobj_item_pos tobj_item_state tobj_item_width" \
                                   " pixmap buffer_pixmap gc width height client_width client_height decorated active layout name icon" \
                                   " icon_pixmap icon_pixbuf state actions prop_xid force_quit_dialog fs button_region min_drawn_buttons_region" \
                                   " draw_only_buttons_region button_last_drawn_state button_fade_info p_active p_active_buffer p_inactive" \
                                   " p_inactive_buffer button_region_inact only_change_active")
+
+FrameSettings = namedtuple("FrameSettings", "engine_fs ws button button_halo text text_halo")
+
+ButtonRegion = namedtuple("ButtonRegion", "base_x1 base_y1 base_x2 base_y2" \
+                                         " glow_x1 glow_y1 glow_x2 glow_y2" \
+                                         " overlap_buttons bg_pixmap")
+
+ButtonFadeInfo = namedtuple("ButtonFadeInfo", "cr y1 counters pulsating timer first_draw")
+
+Rectangle = namedtuple("Rectangle", "x1 y1 x2 y2")
+
+def _wrap_rectangle(x1, y1, x2, y2):
+    return Rectangle._make((x1, y1, x2, y2))
 
 theme_dir = os.path.expanduser("~/.emerald/theme/")
 
