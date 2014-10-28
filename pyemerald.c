@@ -66,27 +66,27 @@ typedef struct _wrappers
     PyObject* button_region;
     PyObject* rectangle;
     PyObject* fade_info;
+    PyObject* window_settings;
 #endif // USE_PY_STRUCTSEQ
 } wrappers;
 
-/*typedef struct _private_py
+typedef struct _private_py
 {
     PyObject* module;
     PyObject* draw;
     PyObject* init;
     wrappers* wrs;
-} private_py
-*/
+} private_py;
+
 
 /*
  * settings privates
  */
 typedef struct _private_ws
 {
-    PyObject* module;
-    PyObject* draw;
-    PyObject* init;
+    private_py* py;
     wrappers* wrs;
+    PyObject* python_ws;
 } private_ws;
 
 void get_meta_info (EngineMetaInfo * emi)
@@ -152,20 +152,22 @@ static wrappers* init_wrappers(private_ws* pws) {
         print_python_error("Couldn't create structseq type for decor");
     }
 #else
-    wrs->decor = get_python_func(pws->module, "DecorT");
+    private_py* py = pws->py;
+
+    wrs->decor = get_python_func(py->module, "DecorT");
     if (!wrs->decor) {
         print_python_error("No DecorT in the python module");
         free(wrs);
         return NULL;
     }
-    wrs->frame_settings = get_python_func(pws->module, "FrameSettings");
+    wrs->frame_settings = get_python_func(py->module, "FrameSettings");
     if (!wrs->frame_settings) {
         print_python_error("No FrameSettings in the python module");
         Py_DECREF(wrs->decor);
         free(wrs);
         return NULL;
     }
-    wrs->button_region = get_python_func(pws->module, "ButtonRegion");
+    wrs->button_region = get_python_func(py->module, "ButtonRegion");
     if (!wrs->button_region) {
         print_python_error("No ButtonRegion in the python module");
         Py_DECREF(wrs->frame_settings);
@@ -173,7 +175,7 @@ static wrappers* init_wrappers(private_ws* pws) {
         free(wrs);
         return NULL;
     }
-    wrs->rectangle = get_python_func(pws->module, "_wrap_rectangle");
+    wrs->rectangle = get_python_func(py->module, "_wrap_rectangle");
     if (!wrs->rectangle) {
         print_python_error("No _wrap_rectangle in the python module");
         Py_DECREF(wrs->button_region);
@@ -182,9 +184,20 @@ static wrappers* init_wrappers(private_ws* pws) {
         free(wrs);
         return NULL;
     }
-    wrs->fade_info = get_python_func(pws->module, "ButtonFadeInfo");
+    wrs->fade_info = get_python_func(py->module, "ButtonFadeInfo");
     if (!wrs->fade_info) {
         print_python_error("No ButtonFadeInfo in the python module");
+        Py_DECREF(wrs->rectangle);
+        Py_DECREF(wrs->button_region);
+        Py_DECREF(wrs->frame_settings);
+        Py_DECREF(wrs->decor);
+        free(wrs);
+        return NULL;
+    }
+    wrs->window_settings = get_python_func(py->module, "_wrap_windowsettings");
+    if (!wrs->window_settings) {
+        print_python_error("No _wrap_windowsettings in the python module");
+        Py_DECREF(wrs->fade_info);
         Py_DECREF(wrs->rectangle);
         Py_DECREF(wrs->button_region);
         Py_DECREF(wrs->frame_settings);
@@ -258,24 +271,50 @@ static void fallback_draw_frame(decor_t* d, cairo_t* cr) {
     cairo_fill(cr);
 }
 
+#define NEW_NONE (Py_INCREF(Py_None), Py_None)
+#define NULL2NONE(var, wrap) var ? wrap : NEW_NONE
+
+#define ACOLOR2TUPLE(acolor) Py_BuildValue("(dddd)", acolor.color.r, acolor.color.g, acolor.color.b, acolor.alpha)
+
 #define ARRAY2TUPLE_BEGIN(tuple, n) \
         PyObject* tuple = PyTuple_New(n); \
-        {\
+        if (!tuple) { \
+            print_python_error("Couldn't create tuple"); \
+        } else {\
             int i; \
+            gboolean error = FALSE; \
             for (i = 0; i < n; ++i) {
 
 #define ARRAY2TUPLE_END(tuple, element) \
                 PyTuple_SET_ITEM(tuple, i, element); \
             }\
+            if (error) {\
+                Py_DECREF(tuple); \
+                tuple = NULL; \
+            } \
         }
+
+#define ARRAY2TUPLE(tuple, n, fun, desc) \
+        ARRAY2TUPLE_BEGIN(tuple, n) \
+            PyObject* element = fun ; \
+            if (!element) { \
+                print_python_error(desc); \
+                element = NEW_NONE; \
+                error = TRUE; \
+            } \
+        ARRAY2TUPLE_END(tuple, element)
+
+
 #define ARRAY2TUPLE_FLAT(tuple, buildstr, array, n, desc) \
         ARRAY2TUPLE_BEGIN(tuple, n) \
             PyObject* element = Py_BuildValue(buildstr, array[i]); \
             if (!element) { \
                 print_python_error(desc); \
-                return NULL; \
             } \
         ARRAY2TUPLE_END(tuple, element)
+
+#define ARRAY2TUPLE_GOBJ(tuple, array, n) \
+        ARRAY2TUPLE(tuple, n, pygobject_new((GObject*) array[i]), "Couldn't wrap GObject")
 
 //For use in Py_BuildValue
 //#define DICT_ELEM(name) #name , name
@@ -283,13 +322,118 @@ static void fallback_draw_frame(decor_t* d, cairo_t* cr) {
 //FIXME: don't just return NULL! what about print_python_error? decref?
 #define DICT_ADD_ELEM(dict, elem) \
         if (PyDict_SetItemString(dict, #elem, elem) < 0) { \
+            print_python_error("Couldn't add element to dictionary"); \
+            Py_DECREF(elem); \
+            Py_DECREF(dict); \
             return NULL; \
         }
 
-#define NEW_NONE (Py_INCREF(Py_None), Py_None)
-#define NULL2NONE(var, wrap) var ? wrap : NEW_NONE
+#define DICT_ADD_ELEMX(dict, elem) \
+        if (!elem) { \
+            Py_DECREF(dict); \
+            return NULL; \
+        } \
+        DICT_ADD_ELEM(dict, elem) \
+        Py_DECREF(elem); \
 
-#define ACOLOR2TUPLE(acolor) Py_BuildValue("(dddd)", acolor.color.r, acolor.color.g, acolor.color.b, acolor.alpha)
+#define DICT_ADD_ELEMXE(dict, elem, desc) \
+        if (!elem) { \
+            print_python_error(desc); \
+            Py_DECREF(dict); \
+            return NULL; \
+        } \
+        DICT_ADD_ELEM(dict, elem) \
+        Py_DECREF(elem);
+
+
+#define DICT_ADD_ARRAY(dict, elem, n, fun, desc) \
+        ARRAY2TUPLE(elem, n, fun, desc) \
+        DICT_ADD_ELEMX(dict, elem)
+
+#define DICT_ADD_ARRAY_FLAT(dict, elem, buildstr, array, n, desc) \
+        ARRAY2TUPLE_FLAT(elem, buildstr, array, n, desc) \
+        DICT_ADD_ELEMX(dict, elem)
+
+#define DICT_ADD_ARRAY_GOBJ(dict, elem, array, n) \
+        ARRAY2TUPLE_GOBJ(elem, array, n) \
+        DICT_ADD_ELEMX(dict, elem)
+
+#define DICT_ADD_GOBJECT(dict, elem, obj) \
+        PyObject* elem = pygobject_new((GObject*) obj); \
+        DICT_ADD_ELEMXE(dict, elem, "Couldn't wrap GObject")
+
+#define DICT_ADD_INT(dict, elem, int) \
+        PyObject* elem = Py_BuildValue("i", int); \
+        DICT_ADD_ELEMXE(dict, elem, "Couldn't wrap int")
+
+#define DICT_ADD_UINT(dict, elem, int) \
+        PyObject* elem = Py_BuildValue("I", int); \
+        DICT_ADD_ELEMXE(dict, elem, "Couldn't wrap uint")
+
+#define DICT_ADD_LONG(dict, elem, long) \
+        PyObject* elem = Py_BuildValue("k", long); \
+        DICT_ADD_ELEMXE(dict, elem, "Couldn't wrap long")
+
+#define DICT_ADD_DOUBLE(dict, elem, double) \
+        PyObject* elem = Py_BuildValue("d", double); \
+        DICT_ADD_ELEMXE(dict, elem, "Couldn't wrap double")
+
+#define DICT_ADD_BOOL(dict, elem, bool) \
+        PyObject* elem = PyBool_FromLong(bool); \
+        DICT_ADD_ELEMXE(dict, elem, "Couldn't wrap bool")
+
+#define DICT_ADD_STRING(dict, elem, str) \
+        PyObject* elem = Py_BuildValue("s", str); \
+        DICT_ADD_ELEMXE(dict, elem, "Couldn't wrap string")
+
+#define DICT_ADD_CAIRO(dict, elem, var, wrap) \
+        PyObject* elem = NULL2NONE(var, wrap); \
+        DICT_ADD_ELEMXE(dict, elem, "Couldn't wrap cairo structure")
+
+#define DICT_ADD_ENUM(dict, elem, enum) \
+        guint* i_##elem = &(enum); /*GCC will warn us if this enum has different size than uint*/ \
+        DICT_ADD_UINT(dict, elem, i_##elem)
+
+#define DICT_ADD_ACOLOR(dict, elem, acolor) \
+        PyObject* elem = ACOLOR2TUPLE(acolor); \
+        DICT_ADD_ELEMXE(dict, elem, "Couldn't wrap alpha_color")
+
+#define SWRAP_ARRAY_FLAT(elem, buildstr, n, desc) DICT_ADD_ARRAY_FLAT(kw, elem, buildstr, stru->elem, n, desc)
+#define SWRAP_ARRAY_GOBJ(elem, n) DICT_ADD_ARRAY_GOBJ(kw, elem, stru->elem, n)
+#define SWRAP_GOBJECT(elem) DICT_ADD_GOBJECT(kw, elem, stru->elem)
+#define SWRAP_INT(elem) DICT_ADD_INT(kw, elem, stru->elem)
+#define SWRAP_UINT(elem) DICT_ADD_UINT(kw, elem, stru->elem)
+#define SWRAP_BOOL(elem) DICT_ADD_BOOL(kw, elem, stru->elem)
+#define SWRAP_LONG(elem) DICT_ADD_LONG(kw, elem, stru->elem)
+#define SWRAP_DOUBLE(elem) DICT_ADD_DOUBLE(kw, elem, stru->elem)
+#define SWRAP_STRING(elem) DICT_ADD_STRING(kw, elem, stru->elem)
+#define SWRAP_CAIRO(elem, wrap) DICT_ADD_CAIRO(kw, elem, stru->elem, wrap)
+#define SWRAP_ENUM(elem) DICT_ADD_ENUM(kw, elem, stru->elem)
+#define SWRAP_ACOLOR(elem) DICT_ADD_ACOLOR(kw, elem, stru->elem)
+
+static void fs_set_ws(PyObject* fs, PyObject* ws) {
+    //TODO: Magic goes here
+}
+
+static PyObject* wrap_cairo_pattern(cairo_pattern_t* pattern, gboolean incref) {
+    PyObject* base = NULL;
+    if (cairo_pattern_get_type(pattern) == CAIRO_PATTERN_TYPE_SURFACE) {
+        cairo_surface_t* surface;
+        cairo_pattern_get_surface(pattern, &surface);
+        cairo_surface_reference(surface);
+        base = PycairoSurface_FromSurface(surface, NULL);
+        if (!base) {
+            print_python_error("Couldn't wrap cairo surface");
+        }
+    }
+    cairo_pattern_reference(pattern);
+    PyObject* ret = PycairoPattern_FromPattern(pattern, base);
+    if (!ret) {
+            print_python_error("Couldn't wrap cairo pattern");
+    }
+    Py_XDECREF(base);
+    return ret;
+}
 
 static PyObject* wrap_framesettings(frame_settings* fs) {
     wrappers* wrs = ((private_ws*) fs->ws->engine_ws)->wrs;
@@ -297,40 +441,196 @@ static PyObject* wrap_framesettings(frame_settings* fs) {
     if (!wrs->frame_settings) {
         return NULL;
     }
+
+    PyObject* kw = PyDict_New();
+    if (!kw) {
+        print_python_error("Couldn't create dictionary");
+        return NULL;
+    }
+    frame_settings* stru = fs;
+
     PyObject* engine_fs = ((private_fs*)fs->engine_fs)->python_fs;
+    DICT_ADD_ELEMXE(kw, engine_fs, "Missing python_fs dictionary");
+
     PyObject* ws = NEW_NONE; //TODO
+    DICT_ADD_ELEM(kw, ws)
 
-    PyObject* button = ACOLOR2TUPLE(fs->button);
-    if (!button) {
-        print_python_error("Couldn't wrap alpha_color");
-    }
-
-    PyObject* button_halo = ACOLOR2TUPLE(fs->button_halo);
-    if (!button_halo) {
-        print_python_error("Couldn't wrap alpha_color");
-    }
-
-    PyObject* text = ACOLOR2TUPLE(fs->text);
-    if (!text) {
-        print_python_error("Couldn't wrap alpha_color");
-    }
-
-    PyObject* text_halo = ACOLOR2TUPLE(fs->text_halo);
-    if (!text_halo) {
-        print_python_error("Couldn't wrap alpha_color");
-    }
+    SWRAP_ACOLOR(button)
+    SWRAP_ACOLOR(button_halo)
+    SWRAP_ACOLOR(text)
+    SWRAP_ACOLOR(text_halo)
 
     PyObject* args = Py_BuildValue("()");
-    PyObject* kw = PyDict_New();
-    DICT_ADD_ELEM(kw, engine_fs)
-    DICT_ADD_ELEM(kw, ws)
-    DICT_ADD_ELEM(kw, button)
-    DICT_ADD_ELEM(kw, button_halo)
-    DICT_ADD_ELEM(kw, text)
-    DICT_ADD_ELEM(kw, text_halo)
+
+    if (!args) {
+        print_python_error("Couldn't create empty args");
+        Py_DECREF(kw);
+        return NULL;
+    }
 
     PyObject* frs = PyObject_Call(wrs->frame_settings, args, kw);
+
+    Py_DECREF(kw);
+    Py_DECREF(args);
+    if (!frs) {
+        print_python_error("Couldn't wrap button frame settings");
+    }
     return frs;
+}
+
+static PyObject* wrap_windowsettings(window_settings* ws) {
+    wrappers* wrs = ((private_ws*) ws->engine_ws)->wrs;
+
+    if (!wrs->window_settings) {
+        return NULL;
+    }
+
+    PyObject* kw = PyDict_New();
+#ifdef PYTHON_DICT_GC_HACK
+    /* Double reference so that the circular GC doesn't clear our dict
+     * while we're still building it */
+    Py_INCREF(kw);
+#endif // PYTHON_DICT_GC_HACK
+    if (!kw) {
+        print_python_error("Couldn't create dictionary");
+        return NULL;
+    }
+    window_settings* stru = ws;
+
+    PyObject* engine_ws = ((private_ws*) ws->engine_ws)->python_ws;
+    DICT_ADD_ELEMXE(kw, engine_ws, "Missing python_ws dictionary");
+    SWRAP_INT(button_offset)
+    SWRAP_INT(button_hoffset)
+    SWRAP_STRING(tobj_layout)
+
+    SWRAP_INT(double_click_action)
+    SWRAP_INT(button_hover_cursor)
+
+    SWRAP_BOOL(round_top_left)
+    SWRAP_BOOL(round_top_right)
+    SWRAP_BOOL(round_bottom_left)
+    SWRAP_BOOL(round_bottom_right)
+
+    PyObject* fs_act = wrap_framesettings(ws->fs_act);
+    DICT_ADD_ELEMX(kw, fs_act)
+    PyObject* fs_inact = wrap_framesettings(ws->fs_inact);
+    DICT_ADD_ELEMX(kw, fs_inact)
+
+    SWRAP_INT(min_titlebar_height)
+    SWRAP_BOOL(use_pixmap_buttons)
+    SWRAP_DOUBLE(corner_radius)
+    SWRAP_ENUM(title_text_align)
+
+    SWRAP_ARRAY_GOBJ(ButtonPix, S_COUNT * B_COUNT)
+    SWRAP_ARRAY_GOBJ(ButtonArray, B_COUNT)
+
+    SWRAP_BOOL(use_button_glow)
+    SWRAP_BOOL(use_button_inactive_glow)
+    SWRAP_BOOL(use_button_fade)
+    SWRAP_BOOL(use_decoration_cropping)
+
+    SWRAP_ARRAY_GOBJ(ButtonGlowPix, B_COUNT)
+
+    SWRAP_GOBJECT(ButtonGlowArray)
+    SWRAP_GOBJECT(ButtonInactiveGlowArray)
+
+    SWRAP_ARRAY_GOBJ(ButtonInactiveGlowPix, B_COUNT)
+
+    SWRAP_INT(button_fade_num_steps)
+    SWRAP_INT(button_fade_step_duration)
+    SWRAP_INT(button_fade_pulse_len_steps)
+    SWRAP_INT(button_fade_pulse_wait_steps)
+
+    SWRAP_DOUBLE(shadow_radius)
+    SWRAP_DOUBLE(shadow_opacity)
+    SWRAP_ARRAY_FLAT(shadow_color, "i", 3, "Couldn't wrap int");
+    SWRAP_INT(shadow_offset_x)
+    SWRAP_INT(shadow_offset_y)
+
+    PyObject* shadow_extents = NEW_NONE; //TODO
+    DICT_ADD_ELEMX(kw, shadow_extents)
+
+    PyObject* win_extents = NEW_NONE; //TODO
+    DICT_ADD_ELEMX(kw, win_extents)
+
+    PyObject* pos = NEW_NONE; //TODO
+    DICT_ADD_ELEMX(kw, pos)
+
+    SWRAP_INT(left_space)
+    SWRAP_INT(right_space)
+    SWRAP_INT(top_space)
+    SWRAP_INT(bottom_space)
+
+    SWRAP_INT(left_corner_space)
+    SWRAP_INT(right_corner_space)
+    SWRAP_INT(top_corner_space)
+    SWRAP_INT(bottom_corner_space)
+
+    SWRAP_INT(titlebar_height)
+    SWRAP_INT(normal_top_corner_space)
+
+    SWRAP_INT(shadow_left_space)
+    SWRAP_INT(shadow_right_space)
+    SWRAP_INT(shadow_top_space)
+    SWRAP_INT(shadow_bottom_space)
+
+    SWRAP_INT(shadow_left_corner_space)
+    SWRAP_INT(shadow_right_corner_space)
+    SWRAP_INT(shadow_top_corner_space)
+    SWRAP_INT(shadow_bottom_corner_space)
+
+    SWRAP_GOBJECT(shadow_pixmap)
+    SWRAP_GOBJECT(large_shadow_pixmap)
+    SWRAP_GOBJECT(decor_normal_pixmap)
+    SWRAP_GOBJECT(decor_active_pixmap)
+
+    SWRAP_CAIRO(shadow_pattern, wrap_cairo_pattern(ws->shadow_pattern, TRUE))
+
+    SWRAP_INT(text_height)
+
+    //SWRAP_GOBJECT(font_desc) //TODO: If it's not a GObject then what is it?
+    PyObject* font_desc = NEW_NONE;
+    DICT_ADD_ELEMX(kw, font_desc);
+    SWRAP_GOBJECT(pango_context)
+
+    PyObject* switcher_extents = NEW_NONE; //TODO
+    DICT_ADD_ELEMX(kw, switcher_extents)
+
+    SWRAP_GOBJECT(switcher_pixmap)
+    SWRAP_GOBJECT(switcher_buffer_pixmap)
+    SWRAP_INT(switcher_width)
+    SWRAP_INT(switcher_height)
+
+    SWRAP_INT(switcher_top_corner_space)
+    SWRAP_INT(switcher_bottom_corner_space)
+
+    PyObject* c_icon_size = NEW_NONE; //TODO
+    DICT_ADD_ELEMX(kw, c_icon_size)
+    PyObject* c_glow_size = NEW_NONE; //TODO
+    DICT_ADD_ELEMX(kw, c_glow_size)
+
+    SWRAP_BOOL(stretch_sides)
+    SWRAP_INT(blur_type)
+
+    PyObject* args = Py_BuildValue("()");
+    if (!args) {
+        print_python_error("Couldn't create empty args");
+        Py_DECREF(kw);
+        return NULL;
+    }
+
+    PyObject* wns = PyObject_Call(wrs->window_settings, args, kw);
+
+    Py_DECREF(kw);
+#ifdef PYTHON_DICT_GC_HACK
+    // Remove the extra reference
+    Py_DECREF(kw);
+#endif
+    Py_DECREF(args);
+    if (!wns) {
+        print_python_error("Couldn't wrap window settings");
+    }
+    return wns;
 }
 
 static PyObject* wrap_fade_info(wrappers* wrs, button_fade_info_t* bfi) {
@@ -338,32 +638,35 @@ static PyObject* wrap_fade_info(wrappers* wrs, button_fade_info_t* bfi) {
         return NULL;
     }
 
+    PyObject* kw = PyDict_New();
+    if (!kw) {
+        print_python_error("Couldn't create dictionary");
+        return NULL;
+    }
+    button_fade_info_t* stru = bfi;
+
     //PyObject* d = Not today...
-    PyObject* cr = NULL2NONE(bfi->cr, PycairoContext_FromContext(bfi->cr, &PycairoContext_Type, NULL));
-    PyObject* y1 = Py_BuildValue("d", bfi->y1);
-    ARRAY2TUPLE_FLAT(counters, "i", bfi->counters, B_T_COUNT, "Couldn't wrap int");
-
-    ARRAY2TUPLE_BEGIN(pulsating, B_T_COUNT)
-        PyObject* element = PyBool_FromLong(bfi->pulsating[i]);
-        if (!element) {
-            print_python_error("Couldn't wrap boolean");
-            return NULL; //FIXME: decref...
-        }
-    ARRAY2TUPLE_END(pulsating, element)
-
-    PyObject* timer = Py_BuildValue("i", bfi->timer);
-    PyObject* first_draw = PyBool_FromLong(bfi->first_draw);
+    SWRAP_CAIRO(cr, PycairoContext_FromContext(cairo_reference(bfi->cr), &PycairoContext_Type, NULL));
+    SWRAP_DOUBLE(y1)
+    SWRAP_ARRAY_FLAT(counters, "i", B_T_COUNT, "Couldn't wrap int")
+    DICT_ADD_ARRAY(kw, pulsating, B_T_COUNT, PyBool_FromLong(bfi->pulsating[i]), "Couldn't wrap boolean")
+    SWRAP_INT(timer)
+    SWRAP_BOOL(first_draw)
 
     PyObject* args = Py_BuildValue("()");
-    PyObject* kw = PyDict_New();
-    DICT_ADD_ELEM(kw, cr)
-    DICT_ADD_ELEM(kw, y1)
-    DICT_ADD_ELEM(kw, counters)
-    DICT_ADD_ELEM(kw, pulsating)
-    DICT_ADD_ELEM(kw, timer)
-    DICT_ADD_ELEM(kw, first_draw)
+    if (!args) {
+        print_python_error("Couldn't create empty args");
+        Py_DECREF(kw);
+        return NULL;
+    }
 
     PyObject* fade_info = PyObject_Call(wrs->fade_info, args, kw);
+
+    Py_DECREF(kw);
+    Py_DECREF(args);
+    if (!fade_info) {
+        print_python_error("Couldn't wrap button fade info");
+    }
     return fade_info;
 }
 
@@ -373,6 +676,9 @@ static PyObject* wrap_rectangle(wrappers* wrs, rectangle_t* r) {
     }
 
     PyObject* rect = PyObject_CallFunction(wrs->rectangle, "iiii", r->x1, r->y1, r->x2, r->y2);
+    if (!rect) {
+        print_python_error("Couldn't wrap rectangle");
+    }
     return rect;
 }
 
@@ -381,39 +687,38 @@ static PyObject* wrap_button_region(wrappers* wrs, button_region_t* br) {
         return NULL;
     }
 
-    PyObject* base_x1 = Py_BuildValue("i", br->base_x1);
-    PyObject* base_y1 = Py_BuildValue("i", br->base_y1);
-    PyObject* base_x2 = Py_BuildValue("i", br->base_x2);
-    PyObject* base_y2 = Py_BuildValue("i", br->base_y2);
-    PyObject* glow_x1 = Py_BuildValue("i", br->glow_x1);
-    PyObject* glow_y1 = Py_BuildValue("i", br->glow_y1);
-    PyObject* glow_x2 = Py_BuildValue("i", br->glow_x2);
-    PyObject* glow_y2 = Py_BuildValue("i", br->glow_y2);
+    PyObject* kw = PyDict_New();
+    if (!kw) {
+        print_python_error("Couldn't create dictionary");
+        return NULL;
+    }
+    button_region_t* stru = br;
 
-    ARRAY2TUPLE_BEGIN(overlap_buttons, B_T_COUNT)
-        PyObject* element = PyBool_FromLong(br->overlap_buttons[i]);
-        if (!element) {
-            print_python_error("Couldn't wrap boolean");
-            return NULL; //FIXME: decref...
-        }
-    ARRAY2TUPLE_END(overlap_buttons, element)
-
-    PyObject* bg_pixmap = pygobject_new((GObject*) br->bg_pixmap);
+    SWRAP_INT(base_x1)
+    SWRAP_INT(base_y1)
+    SWRAP_INT(base_x2)
+    SWRAP_INT(base_y2)
+    SWRAP_INT(glow_x1)
+    SWRAP_INT(glow_y1)
+    SWRAP_INT(glow_x2)
+    SWRAP_INT(glow_y2)
+    DICT_ADD_ARRAY(kw, overlap_buttons, B_T_COUNT, PyBool_FromLong(br->overlap_buttons[i]), "Couldn't wrap boolean")
+    SWRAP_GOBJECT(bg_pixmap)
 
     PyObject* args = Py_BuildValue("()");
-    PyObject* kw = PyDict_New();
-    DICT_ADD_ELEM(kw, base_x1)
-    DICT_ADD_ELEM(kw, base_y1)
-    DICT_ADD_ELEM(kw, base_x2)
-    DICT_ADD_ELEM(kw, base_y2)
-    DICT_ADD_ELEM(kw, glow_x1)
-    DICT_ADD_ELEM(kw, glow_y1)
-    DICT_ADD_ELEM(kw, glow_x2)
-    DICT_ADD_ELEM(kw, glow_y2)
-    DICT_ADD_ELEM(kw, overlap_buttons)
-    DICT_ADD_ELEM(kw, bg_pixmap)
+    if (!args) {
+        print_python_error("Couldn't create empty args");
+        Py_DECREF(kw);
+        return NULL;
+    }
 
     PyObject* region = PyObject_Call(wrs->button_region, args, kw);
+
+    Py_DECREF(kw);
+    Py_DECREF(args);
+    if (!region) {
+        print_python_error("Couldn't wrap button region");
+    }
     return region;
 }
 
@@ -424,86 +729,89 @@ static PyObject* wrap_decor(decor_t* d) {
         return NULL;
     }
 
-    ARRAY2TUPLE_BEGIN(event_windows, 3)
-        PyObject* element = Py_BuildValue("(kkk)", d->event_windows[i][0], d->event_windows[i][1], d->event_windows[i][2]);
-        if (!element) {
-            print_python_error("Couldn't create tuple");
-            return NULL;
-        }
-    ARRAY2TUPLE_END(event_windows, element)
-
-    ARRAY2TUPLE_FLAT(button_windows, "k", d->button_windows, B_T_COUNT, "Couldn't wrap long")
-    ARRAY2TUPLE_FLAT(button_states, "I", d->button_states, B_T_COUNT, "Couldn't wrap int")
-
-    ARRAY2TUPLE_FLAT(tobj_pos, "i", d->tobj_pos, 3, "Couldn't wrap int")
-    ARRAY2TUPLE_FLAT(tobj_size, "i", d->tobj_size, 3, "Couldn't wrap int")
-    ARRAY2TUPLE_FLAT(tobj_item_pos, "i", d->tobj_item_pos, 11, "Couldn't wrap int")
-    ARRAY2TUPLE_FLAT(tobj_item_state, "i", d->tobj_item_state, 11, "Couldn't wrap int")
-    ARRAY2TUPLE_FLAT(tobj_item_width, "i", d->tobj_item_width, 11, "Couldn't wrap int")
-    PyObject* pixmap = pygobject_new((GObject*) d->pixmap);
-    PyObject* buffer_pixmap = pygobject_new((GObject*) d->buffer_pixmap);
-    PyObject* gc = pygobject_new((GObject*) d->gc);
-    PyObject* width = Py_BuildValue("i", d->width);
-    PyObject* height = Py_BuildValue("i", d->height);
-    PyObject* client_width = Py_BuildValue("i", d->client_width);
-    PyObject* client_height = Py_BuildValue("i", d->client_height);
-    PyObject* decorated = PyBool_FromLong(d->decorated);
-    PyObject* active = PyBool_FromLong(d->active);
-    PyObject* layout = pygobject_new((GObject*) d->layout);
-    PyObject* name = Py_BuildValue("s", d->name);
-    PyObject* icon = NULL2NONE(d->icon, PycairoPattern_FromPattern(d->icon, NULL));
-    PyObject* icon_pixmap = pygobject_new((GObject*) d->icon_pixmap);
-    PyObject* icon_pixbuf = pygobject_new((GObject*) d->icon_pixbuf);
-    guint* i_state = &(d->state); // GCC will warn us if this enum has different size than uint
-    PyObject* state = Py_BuildValue("I", i_state);
-    guint* i_actions = &(d->actions); // GCC will warn us if this enum has different size than uint
-    PyObject* actions = Py_BuildValue("I", i_actions);
-    PyObject* prop_xid = Py_BuildValue("k", d->prop_xid);
-    PyObject* force_quit_dialog = pygobject_new((GObject*) d->force_quit_dialog);
-    PyObject* fs = wrap_framesettings(d->fs);
-    if (!fs) {
-        //FIXME: DECREF everything we've already wrapped... sigh...
+    PyObject* kw = PyDict_New();
+    if (!kw) {
+        print_python_error("Couldn't create dictionary");
         return NULL;
     }
-    //PyObject* draw = sorry, not this time
-    ARRAY2TUPLE_BEGIN(button_region, B_T_COUNT)
-        PyObject* element = wrap_button_region(wrs, &d->button_region[i]);
-        if (!element) {
-            //FIXME: decref..
-            return NULL;
+    decor_t* stru = d;
+
+    DICT_ADD_ARRAY(kw, event_windows, 3, Py_BuildValue("(kkk)", d->event_windows[i][0], d->event_windows[i][1], d->event_windows[i][2]), "Couldn't create tuple")
+
+    SWRAP_ARRAY_FLAT(button_windows, "k", B_T_COUNT, "Couldn't wrap long")
+    SWRAP_ARRAY_FLAT(button_states, "I", B_T_COUNT, "Couldn't wrap int")
+
+    SWRAP_ARRAY_FLAT(tobj_pos, "i", 3, "Couldn't wrap int")
+    SWRAP_ARRAY_FLAT(tobj_size, "i", 3, "Couldn't wrap int")
+    SWRAP_ARRAY_FLAT(tobj_item_pos, "i", 11, "Couldn't wrap int")
+    SWRAP_ARRAY_FLAT(tobj_item_state, "i", 11, "Couldn't wrap int")
+    SWRAP_ARRAY_FLAT(tobj_item_width, "i", 11, "Couldn't wrap int")
+    SWRAP_GOBJECT(pixmap)
+    SWRAP_GOBJECT(buffer_pixmap)
+    SWRAP_GOBJECT(gc);
+    SWRAP_INT(width)
+    SWRAP_INT(height)
+    SWRAP_INT(client_width)
+    SWRAP_INT(client_height)
+    SWRAP_BOOL(decorated)
+    SWRAP_BOOL(active)
+    SWRAP_GOBJECT(layout)
+    SWRAP_STRING(name)
+    SWRAP_CAIRO(icon, wrap_cairo_pattern(stru->icon, FALSE))
+    SWRAP_GOBJECT(icon_pixmap)
+    SWRAP_GOBJECT(icon_pixbuf)
+    SWRAP_ENUM(state)
+    SWRAP_ENUM(actions)
+    SWRAP_LONG(prop_xid)
+    SWRAP_GOBJECT(force_quit_dialog);
+
+//#define NO_WS
+#ifdef NO_WS
+    PyObject* ws = NEW_NONE;
+#else
+    PyObject* ws = wrap_windowsettings(d->fs->ws);
+#endif // NO_WS
+    if (!ws) {
+        Py_DECREF(kw);
+        return NULL;
+    }
+    PyObject* fs;
+#ifndef NO_WS
+    if (d->fs == d->fs->ws->fs_act) {
+        fs = PyObject_GetAttrString(ws, "fs_act");
+    } else if (d->fs == d->fs->ws->fs_inact) {
+        fs = PyObject_GetAttrString(ws, "fs_inact");
+    } else {
+#endif
+        fs = wrap_framesettings(d->fs);
+        if (fs) {
+            fs_set_ws(fs, ws);
         }
-    ARRAY2TUPLE_END(button_region, element)
+#ifndef NO_WS
+    }
+#endif
+    Py_DECREF(ws);
+    DICT_ADD_ELEMX(kw, fs)
+    //PyObject* draw = sorry, not this time
+    DICT_ADD_ARRAY(kw, button_region, B_T_COUNT, wrap_button_region(wrs, &d->button_region[i]), "Couldn't wrap button region")
 
     PyObject* min_drawn_buttons_region = wrap_rectangle(wrs, &d->min_drawn_buttons_region);
-    if (!min_drawn_buttons_region) {
-        //FIXME: decref..
-        return NULL;
-    }
+    DICT_ADD_ELEMX(kw, min_drawn_buttons_region)
 
-    PyObject* draw_only_buttons_region = PyBool_FromLong(d->draw_only_buttons_region);
-    ARRAY2TUPLE_FLAT(button_last_drawn_state, "i", d->button_last_drawn_state, B_T_COUNT, "Couldn't wrap int")
+    SWRAP_BOOL(draw_only_buttons_region)
+    SWRAP_ARRAY_FLAT(button_last_drawn_state, "i", B_T_COUNT, "Couldn't wrap int")
 
     PyObject* button_fade_info = wrap_fade_info(wrs, &d->button_fade_info);
-    if (!button_fade_info) {
-        //FIXME: decref..
-        return NULL;
-    }
+    DICT_ADD_ELEMX(kw, button_fade_info)
 
-    PyObject* p_active = pygobject_new((GObject*) d->p_active);
-    PyObject* p_active_buffer = pygobject_new((GObject*) d->p_active_buffer);
-    PyObject* p_inactive = pygobject_new((GObject*) d->p_inactive);
-    PyObject* p_inactive_buffer = pygobject_new((GObject*) d->p_inactive_buffer);
+    SWRAP_GOBJECT(p_active)
+    SWRAP_GOBJECT(p_active_buffer)
+    SWRAP_GOBJECT(p_inactive)
+    SWRAP_GOBJECT(p_inactive_buffer)
 
-    ARRAY2TUPLE_BEGIN(button_region_inact, B_T_COUNT)
-        PyObject* element = wrap_button_region(wrs, &d->button_region_inact[i]);
-        if (!element) {
-            //FIXME: decref..
-            return NULL;
-        }
-    ARRAY2TUPLE_END(button_region_inact, element)
+    DICT_ADD_ARRAY(kw, button_region_inact, B_T_COUNT, wrap_button_region(wrs, &d->button_region_inact[i]), "Couldn't wrap button region")
 
-
-    PyObject* only_change_active = PyBool_FromLong(d->only_change_active);
+    SWRAP_BOOL(only_change_active)
 
 #ifdef USE_PY_STRUCTSEQ
     PyObject* decor = PyStructSequence_New(wrs->decor);
@@ -519,50 +827,22 @@ static PyObject* wrap_decor(decor_t* d) {
     PyStructSequence_SET_ITEM(decor, 5, tobj_item_pos);
     PyStructSequence_SET_ITEM(decor, 6, tobj_item_state);
     PyStructSequence_SET_ITEM(decor, 7, tobj_item_width);
-#else
+#endif // USE_PY_STRUCTSEQ
+
     PyObject* args = Py_BuildValue("()");
-    PyObject* kw = PyDict_New();
-    DICT_ADD_ELEM(kw, event_windows)
-    DICT_ADD_ELEM(kw, button_windows)
-    DICT_ADD_ELEM(kw, button_states)
-    DICT_ADD_ELEM(kw, tobj_pos)
-    DICT_ADD_ELEM(kw, tobj_size)
-    DICT_ADD_ELEM(kw, tobj_item_pos)
-    DICT_ADD_ELEM(kw, tobj_item_state)
-    DICT_ADD_ELEM(kw, tobj_item_width)
-    DICT_ADD_ELEM(kw, pixmap)
-    DICT_ADD_ELEM(kw, buffer_pixmap)
-    DICT_ADD_ELEM(kw, gc)
-    DICT_ADD_ELEM(kw, width)
-    DICT_ADD_ELEM(kw, height)
-    DICT_ADD_ELEM(kw, client_width)
-    DICT_ADD_ELEM(kw, client_height)
-    DICT_ADD_ELEM(kw, decorated)
-    DICT_ADD_ELEM(kw, active)
-    DICT_ADD_ELEM(kw, layout)
-    DICT_ADD_ELEM(kw, name)
-    DICT_ADD_ELEM(kw, icon)
-    DICT_ADD_ELEM(kw, icon_pixmap)
-    DICT_ADD_ELEM(kw, icon_pixbuf)
-    DICT_ADD_ELEM(kw, state)
-    DICT_ADD_ELEM(kw, actions)
-    DICT_ADD_ELEM(kw, prop_xid)
-    DICT_ADD_ELEM(kw, force_quit_dialog)
-    DICT_ADD_ELEM(kw, fs)
-    DICT_ADD_ELEM(kw, button_region)
-    DICT_ADD_ELEM(kw, min_drawn_buttons_region)
-    DICT_ADD_ELEM(kw, draw_only_buttons_region)
-    DICT_ADD_ELEM(kw, button_last_drawn_state)
-    DICT_ADD_ELEM(kw, button_fade_info)
-    DICT_ADD_ELEM(kw, p_active)
-    DICT_ADD_ELEM(kw, p_active_buffer)
-    DICT_ADD_ELEM(kw, p_inactive)
-    DICT_ADD_ELEM(kw, p_inactive_buffer)
-    DICT_ADD_ELEM(kw, button_region_inact)
-    DICT_ADD_ELEM(kw, only_change_active)
+    if (!args) {
+        print_python_error("Couldn't create empty args");
+        Py_DECREF(kw);
+        return NULL;
+    }
 
     PyObject* decor = PyObject_Call(wrs->decor, args, kw);
-#endif // USE_PY_STRUCTSEQ
+
+    Py_DECREF(kw);
+    Py_DECREF(args);
+    if (!decor) {
+        print_python_error("Couldn't wrap decor");
+    }
     return decor;
 }
 
@@ -572,7 +852,7 @@ static gboolean python_draw_frame (decor_t* d, cairo_t* cr) {
     window_settings *ws = fs->ws;
     private_ws* pws = ws->engine_ws;
 
-    PyObject* pFunc = pws->draw;
+    PyObject* pFunc = pws->py->draw;
     if (pFunc == NULL) {
         //The python-related part of initialization must have failed
         return FALSE;
@@ -600,7 +880,7 @@ static gboolean python_draw_frame (decor_t* d, cairo_t* cr) {
         goto fail;
     }
 
-    PyObject* pyCtx = PycairoContext_FromContext(cr, &PycairoContext_Type, NULL);
+    PyObject* pyCtx = PycairoContext_FromContext(cairo_reference(cr), &PycairoContext_Type, NULL);
     if (!pyCtx) {
         // This fool we've just called destroyed our context just because he was unable to wrap it...
         print_python_error("Couldn't wrap cairo context.");
@@ -643,7 +923,7 @@ fail:
 void engine_draw_frame (decor_t * d, cairo_t * cr)
 {
     if (!python_draw_frame(d, cr)) {
-        ((private_ws*) d->fs->ws->engine_ws)->draw = NULL; // Don't try python again
+        ((private_ws*) d->fs->ws->engine_ws)->py->draw = NULL; // Don't try python again
         fallback_draw_frame(d, cr);
     }
 }
@@ -715,9 +995,15 @@ static gboolean init_python(private_ws* pws) {
         }
     }
 
-    pws->module = pModule;
-    pws->draw = pDrawFunc;
-    pws->init = pInitFunc;
+    private_py* py;
+    py = malloc(sizeof(private_py));
+    bzero(py,sizeof(private_py));
+
+    py->module = pModule;
+    py->draw = pDrawFunc;
+    py->init = pInitFunc;
+
+    pws->py = py;
 
     return TRUE;
 }
@@ -753,6 +1039,8 @@ void init_engine(window_settings * ws)
         ((private_fs*)ws->fs_act->engine_fs)->python_fs = pyfs;
         pyfs = PyDict_New();
         ((private_fs*)ws->fs_inact->engine_fs)->python_fs = pyfs;
+        pyfs = PyDict_New();
+        pws->python_ws = pyfs;
     }
 }
 

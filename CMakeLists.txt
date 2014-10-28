@@ -18,7 +18,8 @@ pkg_search_module(PYGOBJECT REQUIRED pygobject-3.0)
 target_link_libraries(pyemerald ${PYTHON_LIBRARIES} ${EMERALD_LIBRARIES} ${PYCAIRO_LIBRARIES} ${PYGOBJECT_LIBRARIES})
 include_directories(pyemerald ${PYTHON_INCLUDE_DIRS} ${EMERALD_INCLUDE_DIRS} ${PYCAIRO_INCLUDE_DIRS} ${PYGOBJECT_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
 
-option(LIBPY_LINK_HACK "Enable workaround for python modules that don't declare dependency on libpython")
+option(LIBPY_LINK_HACK "Enable workaround for python modules that don't declare dependency on libpython" ON)
+option(PYTHON_DICT_GC_HACK "Enable workaround for python circular GC clearing our dict while we're building it." ON)
 
 if (LIBPY_LINK_HACK)
     set(LIBPY_SONAME ${PYTHON_LIBRARIES})
