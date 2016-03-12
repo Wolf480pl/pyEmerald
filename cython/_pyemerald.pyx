@@ -1,4 +1,5 @@
 from _c_emerald cimport *
+from _c_wraputils cimport *
 #from _c_py3cairo import *
 
 import sys
@@ -13,7 +14,7 @@ cdef public void pyemerald_init():
     script = engine
     script.init()
 
-cdef public gboolean pyemerald_draw_frame(decor_t* decor, object ctx):
+cdef public gboolean pyemerald_draw_frame(decor_t* decor, cairo_t *cr):
     width = decor.width
     height = decor.height
     size = (width, height)
@@ -21,6 +22,7 @@ cdef public gboolean pyemerald_draw_frame(decor_t* decor, object ctx):
     cdef window_settings *ws = fs.ws
     space = emerald.convert_ltrb((ws.left_space, ws.top_space, ws.right_space, ws.bottom_space))
     extents = emerald.convert_ltrb((ws.win_extents.left, ws.win_extents.top, ws.win_extents.right, ws.win_extents.bottom))
+    ctx = wrap_cairo(cr)
 
     if script is None:
         return False

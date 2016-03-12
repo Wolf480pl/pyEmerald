@@ -7,6 +7,8 @@ cdef extern from "gtk/gtk.h" nogil:
         pass
     ctypedef struct GdkGC:
         pass
+    ctypedef struct GObject:
+        pass
 
 cdef extern from "pango/pangocairo.h" nogil:
     ctypedef enum PangoAlignment:

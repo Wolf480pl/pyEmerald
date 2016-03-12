@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 project(pyemerald)
 
-add_library(pyemerald MODULE pyemerald.c _pyemerald.c)
+add_library(pyemerald MODULE pyemerald.c _pyemerald.c wraputils.c)
 
 include(GNUInstallDirs)
 

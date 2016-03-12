@@ -255,6 +255,7 @@ static CYTHON_INLINE float __PYX_NAN() {
 #include "wnck.h"
 #include "titlebar.h"
 #include "emerald.h"
+#include "wraputils.h"
 #ifdef _OPENMP
 #include <omp.h>
 #endif /* _OPENMP */
@@ -619,9 +620,11 @@ static int __Pyx_InitStrings(__Pyx_StringTabEntry *t);
 
 /* Module declarations from '_c_emerald' */
 
+/* Module declarations from '_c_wraputils' */
+
 /* Module declarations from '_pyemerald' */
 __PYX_EXTERN_C DL_EXPORT(void) pyemerald_init(void); /*proto*/
-__PYX_EXTERN_C DL_EXPORT(gboolean) pyemerald_draw_frame(decor_t *, PyObject *); /*proto*/
+__PYX_EXTERN_C DL_EXPORT(gboolean) pyemerald_draw_frame(decor_t *, cairo_t *); /*proto*/
 #define __Pyx_MODULE_NAME "_pyemerald"
 int __pyx_module_is_main__pyemerald = 0;
 
@@ -657,7 +660,7 @@ static PyObject *__pyx_n_s_test;
 static PyObject *__pyx_int_0;
 static PyObject *__pyx_tuple__2;
 
-/* "_pyemerald.pyx":9
+/* "_pyemerald.pyx":10
  * script = None
  * 
  * cdef public void pyemerald_init():             # <<<<<<<<<<<<<<
@@ -679,27 +682,27 @@ void pyemerald_init(void) {
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("pyemerald_init", 0);
 
-  /* "_pyemerald.pyx":11
+  /* "_pyemerald.pyx":12
  * cdef public void pyemerald_init():
  *     global script
  *     sys.path.insert(0, emerald.make_filename(""))             # <<<<<<<<<<<<<<
  *     import engine
  *     script = engine
  */
-  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_sys); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_sys); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 12; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_path); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_path); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 12; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_insert); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_insert); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 12; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_emerald); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_emerald); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 12; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_make_filename); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_make_filename); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 12; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_tuple__2, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_tuple__2, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 12; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __pyx_t_4 = NULL;
@@ -714,7 +717,7 @@ void pyemerald_init(void) {
       __pyx_t_5 = 1;
     }
   }
-  __pyx_t_6 = PyTuple_New(2+__pyx_t_5); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_6 = PyTuple_New(2+__pyx_t_5); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 12; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_6);
   if (__pyx_t_4) {
     __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_4); __pyx_t_4 = NULL;
@@ -725,43 +728,43 @@ void pyemerald_init(void) {
   __Pyx_GIVEREF(__pyx_t_3);
   PyTuple_SET_ITEM(__pyx_t_6, 1+__pyx_t_5, __pyx_t_3);
   __pyx_t_3 = 0;
-  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 12; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "_pyemerald.pyx":12
+  /* "_pyemerald.pyx":13
  *     global script
  *     sys.path.insert(0, emerald.make_filename(""))
  *     import engine             # <<<<<<<<<<<<<<
  *     script = engine
  *     script.init()
  */
-  __pyx_t_1 = __Pyx_Import(__pyx_n_s_engine, 0, -1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 12; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_Import(__pyx_n_s_engine, 0, -1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_engine = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "_pyemerald.pyx":13
+  /* "_pyemerald.pyx":14
  *     sys.path.insert(0, emerald.make_filename(""))
  *     import engine
  *     script = engine             # <<<<<<<<<<<<<<
  *     script.init()
  * 
  */
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_script, __pyx_v_engine) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_script, __pyx_v_engine) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 14; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
 
-  /* "_pyemerald.pyx":14
+  /* "_pyemerald.pyx":15
  *     import engine
  *     script = engine
  *     script.init()             # <<<<<<<<<<<<<<
  * 
- * cdef public gboolean pyemerald_draw_frame(decor_t* decor, object ctx):
+ * cdef public gboolean pyemerald_draw_frame(decor_t* decor, cairo_t *cr):
  */
-  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_script); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 14; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_script); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 15; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_init); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 14; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_init); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 15; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_2 = NULL;
@@ -775,16 +778,16 @@ void pyemerald_init(void) {
     }
   }
   if (__pyx_t_2) {
-    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_6, __pyx_t_2); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 14; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_6, __pyx_t_2); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 15; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   } else {
-    __pyx_t_1 = __Pyx_PyObject_CallNoArg(__pyx_t_6); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 14; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_PyObject_CallNoArg(__pyx_t_6); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 15; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "_pyemerald.pyx":9
+  /* "_pyemerald.pyx":10
  * script = None
  * 
  * cdef public void pyemerald_init():             # <<<<<<<<<<<<<<
@@ -806,15 +809,15 @@ void pyemerald_init(void) {
   __Pyx_RefNannyFinishContext();
 }
 
-/* "_pyemerald.pyx":16
+/* "_pyemerald.pyx":17
  *     script.init()
  * 
- * cdef public gboolean pyemerald_draw_frame(decor_t* decor, object ctx):             # <<<<<<<<<<<<<<
+ * cdef public gboolean pyemerald_draw_frame(decor_t* decor, cairo_t *cr):             # <<<<<<<<<<<<<<
  *     width = decor.width
  *     height = decor.height
  */
 
-gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
+gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, cairo_t *__pyx_v_cr) {
   gint __pyx_v_width;
   gint __pyx_v_height;
   PyObject *__pyx_v_size = NULL;
@@ -822,6 +825,7 @@ gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
   window_settings *__pyx_v_ws;
   PyObject *__pyx_v_space = NULL;
   PyObject *__pyx_v_extents = NULL;
+  PyObject *__pyx_v_ctx = NULL;
   gboolean __pyx_r;
   __Pyx_RefNannyDeclarations
   gint __pyx_t_1;
@@ -842,9 +846,9 @@ gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("pyemerald_draw_frame", 0);
 
-  /* "_pyemerald.pyx":17
+  /* "_pyemerald.pyx":18
  * 
- * cdef public gboolean pyemerald_draw_frame(decor_t* decor, object ctx):
+ * cdef public gboolean pyemerald_draw_frame(decor_t* decor, cairo_t *cr):
  *     width = decor.width             # <<<<<<<<<<<<<<
  *     height = decor.height
  *     size = (width, height)
@@ -852,8 +856,8 @@ gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
   __pyx_t_1 = __pyx_v_decor->width;
   __pyx_v_width = __pyx_t_1;
 
-  /* "_pyemerald.pyx":18
- * cdef public gboolean pyemerald_draw_frame(decor_t* decor, object ctx):
+  /* "_pyemerald.pyx":19
+ * cdef public gboolean pyemerald_draw_frame(decor_t* decor, cairo_t *cr):
  *     width = decor.width
  *     height = decor.height             # <<<<<<<<<<<<<<
  *     size = (width, height)
@@ -862,18 +866,18 @@ gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
   __pyx_t_1 = __pyx_v_decor->height;
   __pyx_v_height = __pyx_t_1;
 
-  /* "_pyemerald.pyx":19
+  /* "_pyemerald.pyx":20
  *     width = decor.width
  *     height = decor.height
  *     size = (width, height)             # <<<<<<<<<<<<<<
  *     cdef frame_settings *fs = decor.fs
  *     cdef window_settings *ws = fs.ws
  */
-  __pyx_t_2 = __Pyx_PyInt_From_gint(__pyx_v_width); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyInt_From_gint(__pyx_v_width); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 20; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = __Pyx_PyInt_From_gint(__pyx_v_height); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_PyInt_From_gint(__pyx_v_height); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 20; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = PyTuple_New(2); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = PyTuple_New(2); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 20; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_GIVEREF(__pyx_t_2);
   PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_2);
@@ -884,7 +888,7 @@ gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
   __pyx_v_size = __pyx_t_4;
   __pyx_t_4 = 0;
 
-  /* "_pyemerald.pyx":20
+  /* "_pyemerald.pyx":21
  *     height = decor.height
  *     size = (width, height)
  *     cdef frame_settings *fs = decor.fs             # <<<<<<<<<<<<<<
@@ -894,7 +898,7 @@ gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
   __pyx_t_5 = __pyx_v_decor->fs;
   __pyx_v_fs = __pyx_t_5;
 
-  /* "_pyemerald.pyx":21
+  /* "_pyemerald.pyx":22
  *     size = (width, height)
  *     cdef frame_settings *fs = decor.fs
  *     cdef window_settings *ws = fs.ws             # <<<<<<<<<<<<<<
@@ -904,27 +908,27 @@ gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
   __pyx_t_6 = __pyx_v_fs->ws;
   __pyx_v_ws = __pyx_t_6;
 
-  /* "_pyemerald.pyx":22
+  /* "_pyemerald.pyx":23
  *     cdef frame_settings *fs = decor.fs
  *     cdef window_settings *ws = fs.ws
  *     space = emerald.convert_ltrb((ws.left_space, ws.top_space, ws.right_space, ws.bottom_space))             # <<<<<<<<<<<<<<
  *     extents = emerald.convert_ltrb((ws.win_extents.left, ws.win_extents.top, ws.win_extents.right, ws.win_extents.bottom))
- * 
+ *     ctx = wrap_cairo(cr)
  */
-  __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_emerald); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_emerald); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_convert_ltrb); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_convert_ltrb); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_PyInt_From_gint(__pyx_v_ws->left_space); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_PyInt_From_gint(__pyx_v_ws->left_space); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_7 = __Pyx_PyInt_From_gint(__pyx_v_ws->top_space); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_7 = __Pyx_PyInt_From_gint(__pyx_v_ws->top_space); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_7);
-  __pyx_t_8 = __Pyx_PyInt_From_gint(__pyx_v_ws->right_space); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_8 = __Pyx_PyInt_From_gint(__pyx_v_ws->right_space); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_8);
-  __pyx_t_9 = __Pyx_PyInt_From_gint(__pyx_v_ws->bottom_space); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_9 = __Pyx_PyInt_From_gint(__pyx_v_ws->bottom_space); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_9);
-  __pyx_t_10 = PyTuple_New(4); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_10 = PyTuple_New(4); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_10);
   __Pyx_GIVEREF(__pyx_t_3);
   PyTuple_SET_ITEM(__pyx_t_10, 0, __pyx_t_3);
@@ -949,17 +953,17 @@ gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
     }
   }
   if (!__pyx_t_9) {
-    __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_10); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_10); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
     __Pyx_GOTREF(__pyx_t_4);
   } else {
-    __pyx_t_8 = PyTuple_New(1+1); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_8 = PyTuple_New(1+1); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_8);
     __Pyx_GIVEREF(__pyx_t_9); PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_9); __pyx_t_9 = NULL;
     __Pyx_GIVEREF(__pyx_t_10);
     PyTuple_SET_ITEM(__pyx_t_8, 0+1, __pyx_t_10);
     __pyx_t_10 = 0;
-    __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_8, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_8, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
   }
@@ -967,27 +971,27 @@ gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
   __pyx_v_space = __pyx_t_4;
   __pyx_t_4 = 0;
 
-  /* "_pyemerald.pyx":23
+  /* "_pyemerald.pyx":24
  *     cdef window_settings *ws = fs.ws
  *     space = emerald.convert_ltrb((ws.left_space, ws.top_space, ws.right_space, ws.bottom_space))
  *     extents = emerald.convert_ltrb((ws.win_extents.left, ws.win_extents.top, ws.win_extents.right, ws.win_extents.bottom))             # <<<<<<<<<<<<<<
+ *     ctx = wrap_cairo(cr)
  * 
- *     if script is None:
  */
-  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_emerald); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_emerald); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_convert_ltrb); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_convert_ltrb); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_8);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyInt_From_int(__pyx_v_ws->win_extents.left); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyInt_From_int(__pyx_v_ws->win_extents.left); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_10 = __Pyx_PyInt_From_int(__pyx_v_ws->win_extents.top); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_10 = __Pyx_PyInt_From_int(__pyx_v_ws->win_extents.top); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_10);
-  __pyx_t_9 = __Pyx_PyInt_From_int(__pyx_v_ws->win_extents.right); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_9 = __Pyx_PyInt_From_int(__pyx_v_ws->win_extents.right); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_9);
-  __pyx_t_7 = __Pyx_PyInt_From_int(__pyx_v_ws->win_extents.bottom); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_7 = __Pyx_PyInt_From_int(__pyx_v_ws->win_extents.bottom); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_7);
-  __pyx_t_3 = PyTuple_New(4); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = PyTuple_New(4); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_GIVEREF(__pyx_t_2);
   PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_t_2);
@@ -1012,17 +1016,17 @@ gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
     }
   }
   if (!__pyx_t_7) {
-    __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_t_8, __pyx_t_3); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_t_8, __pyx_t_3); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_GOTREF(__pyx_t_4);
   } else {
-    __pyx_t_9 = PyTuple_New(1+1); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_9 = PyTuple_New(1+1); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_GIVEREF(__pyx_t_7); PyTuple_SET_ITEM(__pyx_t_9, 0, __pyx_t_7); __pyx_t_7 = NULL;
     __Pyx_GIVEREF(__pyx_t_3);
     PyTuple_SET_ITEM(__pyx_t_9, 0+1, __pyx_t_3);
     __pyx_t_3 = 0;
-    __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_8, __pyx_t_9, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_8, __pyx_t_9, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
   }
@@ -1031,20 +1035,32 @@ gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
   __pyx_t_4 = 0;
 
   /* "_pyemerald.pyx":25
+ *     space = emerald.convert_ltrb((ws.left_space, ws.top_space, ws.right_space, ws.bottom_space))
  *     extents = emerald.convert_ltrb((ws.win_extents.left, ws.win_extents.top, ws.win_extents.right, ws.win_extents.bottom))
+ *     ctx = wrap_cairo(cr)             # <<<<<<<<<<<<<<
+ * 
+ *     if script is None:
+ */
+  __pyx_t_4 = wrap_cairo(__pyx_v_cr); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 25; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_v_ctx = __pyx_t_4;
+  __pyx_t_4 = 0;
+
+  /* "_pyemerald.pyx":27
+ *     ctx = wrap_cairo(cr)
  * 
  *     if script is None:             # <<<<<<<<<<<<<<
  *         return False
  * 
  */
-  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_script); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 25; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_script); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 27; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
   __pyx_t_11 = (__pyx_t_4 == Py_None);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __pyx_t_12 = (__pyx_t_11 != 0);
   if (__pyx_t_12) {
 
-    /* "_pyemerald.pyx":26
+    /* "_pyemerald.pyx":28
  * 
  *     if script is None:
  *         return False             # <<<<<<<<<<<<<<
@@ -1054,8 +1070,8 @@ gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
     __pyx_r = 0;
     goto __pyx_L0;
 
-    /* "_pyemerald.pyx":25
- *     extents = emerald.convert_ltrb((ws.win_extents.left, ws.win_extents.top, ws.win_extents.right, ws.win_extents.bottom))
+    /* "_pyemerald.pyx":27
+ *     ctx = wrap_cairo(cr)
  * 
  *     if script is None:             # <<<<<<<<<<<<<<
  *         return False
@@ -1063,18 +1079,18 @@ gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
  */
   }
 
-  /* "_pyemerald.pyx":28
+  /* "_pyemerald.pyx":30
  *         return False
  * 
  *     script.draw(ctx, size, space, extents, ws.titlebar_height)             # <<<<<<<<<<<<<<
  *     return True
  */
-  __pyx_t_8 = __Pyx_GetModuleGlobalName(__pyx_n_s_script); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_8 = __Pyx_GetModuleGlobalName(__pyx_n_s_script); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_8);
-  __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_t_8, __pyx_n_s_draw); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_t_8, __pyx_n_s_draw); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_9);
   __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-  __pyx_t_8 = __Pyx_PyInt_From_gint(__pyx_v_ws->titlebar_height); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_8 = __Pyx_PyInt_From_gint(__pyx_v_ws->titlebar_height); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_8);
   __pyx_t_3 = NULL;
   __pyx_t_13 = 0;
@@ -1088,7 +1104,7 @@ gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
       __pyx_t_13 = 1;
     }
   }
-  __pyx_t_7 = PyTuple_New(5+__pyx_t_13); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_7 = PyTuple_New(5+__pyx_t_13); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_7);
   if (__pyx_t_3) {
     __Pyx_GIVEREF(__pyx_t_3); PyTuple_SET_ITEM(__pyx_t_7, 0, __pyx_t_3); __pyx_t_3 = NULL;
@@ -1108,13 +1124,13 @@ gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
   __Pyx_GIVEREF(__pyx_t_8);
   PyTuple_SET_ITEM(__pyx_t_7, 4+__pyx_t_13, __pyx_t_8);
   __pyx_t_8 = 0;
-  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_9, __pyx_t_7, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_9, __pyx_t_7, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
   __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "_pyemerald.pyx":29
+  /* "_pyemerald.pyx":31
  * 
  *     script.draw(ctx, size, space, extents, ws.titlebar_height)
  *     return True             # <<<<<<<<<<<<<<
@@ -1122,10 +1138,10 @@ gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
   __pyx_r = 1;
   goto __pyx_L0;
 
-  /* "_pyemerald.pyx":16
+  /* "_pyemerald.pyx":17
  *     script.init()
  * 
- * cdef public gboolean pyemerald_draw_frame(decor_t* decor, object ctx):             # <<<<<<<<<<<<<<
+ * cdef public gboolean pyemerald_draw_frame(decor_t* decor, cairo_t *cr):             # <<<<<<<<<<<<<<
  *     width = decor.width
  *     height = decor.height
  */
@@ -1145,6 +1161,7 @@ gboolean pyemerald_draw_frame(decor_t *__pyx_v_decor, PyObject *__pyx_v_ctx) {
   __Pyx_XDECREF(__pyx_v_size);
   __Pyx_XDECREF(__pyx_v_space);
   __Pyx_XDECREF(__pyx_v_extents);
+  __Pyx_XDECREF(__pyx_v_ctx);
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
@@ -1196,14 +1213,14 @@ static int __Pyx_InitCachedConstants(void) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
 
-  /* "_pyemerald.pyx":11
+  /* "_pyemerald.pyx":12
  * cdef public void pyemerald_init():
  *     global script
  *     sys.path.insert(0, emerald.make_filename(""))             # <<<<<<<<<<<<<<
  *     import engine
  *     script = engine
  */
-  __pyx_tuple__2 = PyTuple_Pack(1, __pyx_kp_s_); if (unlikely(!__pyx_tuple__2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 11; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple__2 = PyTuple_Pack(1, __pyx_kp_s_); if (unlikely(!__pyx_tuple__2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 12; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple__2);
   __Pyx_GIVEREF(__pyx_tuple__2);
   __Pyx_RefNannyFinishContext();
@@ -1315,43 +1332,43 @@ PyMODINIT_FUNC PyInit__pyemerald(void)
   if (__Pyx_patch_abc() < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   #endif
 
-  /* "_pyemerald.pyx":4
+  /* "_pyemerald.pyx":5
  * #from _c_py3cairo import *
  * 
  * import sys             # <<<<<<<<<<<<<<
  * import emerald
  * 
  */
-  __pyx_t_1 = __Pyx_Import(__pyx_n_s_sys, 0, -1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 4; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_Import(__pyx_n_s_sys, 0, -1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 5; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_sys, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 4; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_sys, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 5; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "_pyemerald.pyx":5
+  /* "_pyemerald.pyx":6
  * 
  * import sys
  * import emerald             # <<<<<<<<<<<<<<
  * 
  * script = None
  */
-  __pyx_t_1 = __Pyx_Import(__pyx_n_s_emerald, 0, -1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 5; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_Import(__pyx_n_s_emerald, 0, -1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 6; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_emerald, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 5; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_emerald, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 6; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "_pyemerald.pyx":7
+  /* "_pyemerald.pyx":8
  * import emerald
  * 
  * script = None             # <<<<<<<<<<<<<<
  * 
  * cdef public void pyemerald_init():
  */
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_script, Py_None) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 7; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_script, Py_None) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 8; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
 
   /* "_pyemerald.pyx":1
  * from _c_emerald cimport *             # <<<<<<<<<<<<<<
+ * from _c_wraputils cimport *
  * #from _c_py3cairo import *
- * 
  */
   __pyx_t_1 = PyDict_New(); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);

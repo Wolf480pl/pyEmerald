@@ -19,7 +19,7 @@
 #endif
 
 __PYX_EXTERN_C DL_IMPORT(void) pyemerald_init(void);
-__PYX_EXTERN_C DL_IMPORT(gboolean) pyemerald_draw_frame(decor_t *, PyObject *);
+__PYX_EXTERN_C DL_IMPORT(gboolean) pyemerald_draw_frame(decor_t *, cairo_t *);
 
 #endif /* !__PYX_HAVE_API___pyemerald */
 

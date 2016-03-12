@@ -35,6 +35,8 @@
 
 #include "_pyemerald.h"
 
+#include "wraputils.h"
+
 #include <config.h>
 
 #define SECT "pyemerald_settings"
@@ -42,6 +44,9 @@
 #define LOCAL_SCRIPT_DIR g_get_home_dir(),".emerald/engines",SCRIPT_SUBDIR
 #define SCRIPT_NAME "emerald"
 #define SCRIPT_FILE SCRIPT_NAME".py"
+
+
+#define wrap_cairo_pattern(pattern, incref) wrap_cairo_pattern(pattern)
 
 //#define USE_PY_STRUCTSEQ
 
@@ -97,13 +102,6 @@ void get_meta_info (EngineMetaInfo * emi)
     emi->description = g_strdup(_("Wrapper for python scripts"));
     emi->last_compat = g_strdup("0.0"); // old themes still compatible
     emi->icon = gdk_pixbuf_new_from_inline(-1, my_pixbuf, TRUE, NULL);
-}
-
-static void print_python_error(const char* desc) {
-    fprintf(stderr, "%s\n", desc);
-    if (PyErr_Occurred()) {
-        PyErr_Print();
-    }
 }
 
 static PyObject* get_python_func(PyObject* module, char* name) {
@@ -417,6 +415,7 @@ static void fs_set_ws(PyObject* fs, PyObject* ws) {
     //TODO: Magic goes here
 }
 
+/*
 static PyObject* wrap_cairo_pattern(cairo_pattern_t* pattern, gboolean incref) {
     PyObject* base = NULL;
     if (cairo_pattern_get_type(pattern) == CAIRO_PATTERN_TYPE_SURFACE) {
@@ -436,6 +435,7 @@ static PyObject* wrap_cairo_pattern(cairo_pattern_t* pattern, gboolean incref) {
     Py_XDECREF(base);
     return ret;
 }
+*/
 
 static PyObject* wrap_framesettings(frame_settings* fs) {
     wrappers* wrs = ((private_ws*) fs->ws->engine_ws)->wrs;
@@ -922,8 +922,10 @@ fail:
 
 }
 
+/*
 gboolean cython_draw_frame(decor_t *d, cairo_t *cr) {
 
+    //PyObject* pyCtx = wrap_cairo(cr);
     PyObject* pyCtx = PycairoContext_FromContext(cairo_reference(cr), &PycairoContext_Type, NULL);
     if (!pyCtx) {
         // This fool we've just called destroyed our context just because he was unable to wrap it...
@@ -931,13 +933,19 @@ gboolean cython_draw_frame(decor_t *d, cairo_t *cr) {
         return FALSE;
     }
 
-    pyemerald_draw_frame(d, pyCtx);
+    gboolean ret = pyemerald_draw_frame(d, pyCtx);
+
+    Py_DECREF(pyCtx);
+    return ret;
 }
+*/
+
 
 void engine_draw_frame (decor_t * d, cairo_t * cr)
 {
     //if (!python_draw_frame(d, cr)) {
-    if (!cython_draw_frame(d, cr)) {
+    //if (!cython_draw_frame(d, cr)) {
+    if (!pyemerald_draw_frame(d, cr)) {
         ((private_ws*) d->fs->ws->engine_ws)->py->draw = NULL; // Don't try python again
         fallback_draw_frame(d, cr);
     }
@@ -968,6 +976,7 @@ static gboolean init_python(private_ws* pws) {
 
     gchar* scriptPath = g_strjoin("/", LOCAL_SCRIPT_DIR, SCRIPT_FILE, NULL);
     if (access(scriptPath, F_OK) != 0) {
+        g_free(scriptPath);
         scriptPath = g_strjoin("/", SCRIPT_DIR, SCRIPT_FILE, NULL);
     }
 
@@ -990,6 +999,7 @@ static gboolean init_python(private_ws* pws) {
         fprintf(stderr, "Couldn't import pycairo C API: %d\n", err);
         return FALSE;
     }
+    PycairoAPI = Pycairo_CAPI;
     if (!pygobject_init(-1, -1, -1)) {
         print_python_error("Couldn't import PyGObject C API");
         return FALSE;
