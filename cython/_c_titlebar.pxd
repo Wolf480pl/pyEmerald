@@ -1,8 +1,8 @@
 from _c_gtypes cimport *
 
 cdef extern from "titlebar.h" nogil:
-    enum: EMERALD_TITLEBAR_H
-    enum: PRESSED_EVENT_WINDOW
+    enum: IN_EVENT_WINDOW = 1
+    enum: PRESSED_EVENT_WINDOW = 2
     enum: BX_COUNT
 
     enum buttons:
@@ -19,6 +19,7 @@ cdef extern from "titlebar.h" nogil:
         B_STICK
         B_UNSTICK
         B_COUNT
+
     enum states:
         S_ACTIVE
         S_ACTIVE_HOVER
@@ -27,6 +28,7 @@ cdef extern from "titlebar.h" nogil:
         S_INACTIVE_HOVER
         S_INACTIVE_PRESS
         S_COUNT
+
     enum btypes:
         B_T_CLOSE
         B_T_MAXIMIZE
@@ -37,8 +39,10 @@ cdef extern from "titlebar.h" nogil:
         B_T_ABOVE
         B_T_STICKY
         B_T_COUNT
+
     gboolean btbistate[B_T_COUNT*1]
     int btstateflag[B_T_COUNT*1]
+
     enum tbtypes:
         TBT_CLOSE=B_T_CLOSE
         TBT_MAXIMIZE=B_T_MAXIMIZE
@@ -56,9 +60,11 @@ cdef extern from "titlebar.h" nogil:
     guint button_actions[B_T_COUNT*1]
     gchar * b_types[]
     gchar * b_names[]
+
     enum _enum_:
         DOUBLE_CLICK_SHADE=0
         DOUBLE_CLICK_MAXIMIZE
         DOUBLE_CLICK_MINIMIZE
         TITLEBAR_ACTION_COUNT
+
     gchar * titlebar_action_name[TITLEBAR_ACTION_COUNT*1]

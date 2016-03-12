@@ -2,40 +2,9 @@ from _c_gtypes cimport *
 from stubs cimport *
 from _c_window cimport *
 from _c_titlebar cimport *
-from _c_decoration cimport *
-
-#from X11._c_Xlib cimport *
-#from X11._c_Xatom cimport *
-#from X11._c_Xregion cimport *
-#from X11._c_cursorfont cimport *
-#from X11.extensions._c_Xrender cimport *
-#from gtk._c_gtk cimport *
-#from gtk._c_gtkwindow cimport *
-#from gdk._c_gdkx cimport *
-#from dbus._c_dbus cimport *
-#from dbus._c_dbus_glib cimport *
-#from dbus._c_dbus_glib_lowlevel cimport *
-#from libwnck._c_libwnck cimport *
-#from libwnck._c_window_action_menu cimport *
-#from _c_cairo cimport *
-#from _c_cairo_xlib cimport *
-#from pango._c_pango_context cimport *
-#from pango._c_pangocairo cimport *
-#from _c_dlfcn cimport *
-#from _c_glib cimport *
-#from glib._c_gstdio cimport *
-#from libc.string cimport *
-#from libc.stdlib cimport *
-#from libc.math cimport *
-#from libc.limits cimport *
-#from posix.unistd cimport *
-#from sys._c_types cimport *
-#from libc.signal cimport *
-#from sys._c_wait cimport *
-#from _c_titlebar cimport *
+#from _c_decoration cimport *
 
 cdef extern from "emerald.h" nogil:
-    enum: EMERALD_H
     enum: GDK_DISABLE_DEPRECATED
     enum: GTK_DISABLE_DEPRECATED
     enum: DBUS_API_SUBJECT_TO_CHANGE
@@ -120,103 +89,86 @@ cdef extern from "emerald.h" nogil:
         frame_settings * fs_act
         frame_settings * fs_inact
         gint min_titlebar_height
-        gboolean use_pixmap_buttons
-        # = FALSE
-        double corner_radius
-        # = 5.0
-        PangoAlignment title_text_align
-        # = PANGO_ALIGN_CENTER
+        gboolean use_pixmap_buttons # = FALSE
+        double corner_radius # = 5.0
+        PangoAlignment title_text_align # = PANGO_ALIGN_CENTER
         GdkPixbuf * ButtonPix[S_COUNT*B_COUNT]
-        GdkPixbuf * ButtonArray[B_COUNT*1]
+        GdkPixbuf * ButtonArray[<int>B_COUNT]
+
         gboolean use_button_glow
         gboolean use_button_inactive_glow
         gboolean use_decoration_cropping
         gboolean use_button_fade
-        GdkPixbuf * ButtonGlowPix[B_COUNT*1]
+        GdkPixbuf * ButtonGlowPix[<int>B_COUNT]
         GdkPixbuf * ButtonGlowArray
         GdkPixbuf * ButtonInactiveGlowArray
-        GdkPixbuf * ButtonInactiveGlowPix[B_COUNT*1]
-        int button_fade_num_steps
-        # number of steps int button_fade_step_duration
-        # step duration in milliseconds int button_fade_pulse_len_steps
-        # length of pulse (number of steps) int button_fade_pulse_wait_steps
-        # how much pulse waits before fade out gdouble shadow_radius
+        GdkPixbuf * ButtonInactiveGlowPix[<int>B_COUNT]
+        int button_fade_num_steps        # number of steps
+        int button_fade_step_duration    # step duration in milliseconds
+        int button_fade_pulse_len_steps  # length of pulse (number of steps)
+        int button_fade_pulse_wait_steps # how much pulse waits before fade out
+        gdouble shadow_radius
         gdouble shadow_opacity
         gint shadow_color[3]
         gint shadow_offset_x
         gint shadow_offset_y
-        decor_extents_t shadow_extents
-        # = { 0, 0, 0, 0 }
-        decor_extents_t win_extents
-        # = { 6, 6, 4, 6 }
+        decor_extents_t shadow_extents # = { 0, 0, 0, 0 }
+        decor_extents_t win_extents    # = { 6, 6, 4, 6 }
         pos_t pos[3][3]
-        gint left_space
-        # = 6
-        gint right_space
-        # = 6
-        gint top_space
-        # = 4
-        gint bottom_space
-        # = 6
-        gint left_corner_space
-        # = 0
-        gint right_corner_space
-        # = 0
-        gint top_corner_space
-        # = 0
-        gint bottom_corner_space
-        # = 0
-        gint titlebar_height
-        # = 17
-        #Titlebar Height gint normal_top_corner_space
-        # = 0
-        gint shadow_left_space
-        # = 0
-        gint shadow_right_space
-        # = 0
-        gint shadow_top_space
-        # = 0
-        gint shadow_bottom_space
-        # = 0
-        gint shadow_left_corner_space
-        # = 0
-        gint shadow_right_corner_space
-        # = 0
-        gint shadow_top_corner_space
-        # = 0
-        gint shadow_bottom_corner_space
-        # = 0
-        GdkPixmap *shadow_pixmap
-        # = NULL
-        GdkPixmap *large_shadow_pixmap
-        # = NULL
-        GdkPixmap *decor_normal_pixmap
-        # = NULL
-        GdkPixmap *decor_active_pixmap
-        # = NULL
-        cairo_pattern_t *shadow_pattern
-        # = NULL
+        gint left_space   # = 6
+        gint right_space  # = 6
+        gint top_space    # = 4
+        gint bottom_space # = 6
+
+        gint left_corner_space   # = 0
+        gint right_corner_space  # = 0
+        gint top_corner_space    # = 0
+        gint bottom_corner_space # = 0
+
+        gint titlebar_height # = 17 #Titlebar Height
+
+        gint normal_top_corner_space # = 0
+
+        gint shadow_left_space       # = 0
+        gint shadow_right_space      # = 0
+        gint shadow_top_space        # = 0
+        gint shadow_bottom_space     # = 0
+
+        gint shadow_left_corner_space    # = 0
+        gint shadow_right_corner_space   # = 0
+        gint shadow_top_corner_space     # = 0
+        gint shadow_bottom_corner_space  # = 0
+
+        GdkPixmap *shadow_pixmap        # = NULL
+        GdkPixmap *large_shadow_pixmap  # = NULL
+        GdkPixmap *decor_normal_pixmap  # = NULL
+        GdkPixmap *decor_active_pixmap  # = NULL
+
+        cairo_pattern_t *shadow_pattern # = NULL
+
         gint text_height
+
         PangoFontDescription *font_desc
         PangoContext * pango_context
-        decor_extents_t switcher_extents
-        # = { 0, 0, 0, 0 }
-        GdkPixmap *switcher_pixmap
-        # = NULL
-        GdkPixmap *switcher_buffer_pixmap
-        # = NULL
+
+        decor_extents_t switcher_extents  # = { 0, 0, 0, 0 }
+        GdkPixmap *switcher_pixmap        # = NULL
+        GdkPixmap *switcher_buffer_pixmap # = NULL
         gint switcher_width
         gint switcher_height
-        gint switcher_top_corner_space
-        # = 0
-        gint switcher_bottom_corner_space
-        # = 0
-        _icon_size c_icon_size[B_T_COUNT*1]
-        _icon_size c_glow_size
-        # one glow size for all buttons # (buttons will be centered in their glows) # active and inactive glow pixmaps are assumed to be of same size gboolean stretch_sides
-        gint blur_type
-        # = BLUR_TYPE_NONE
+
+        gint switcher_top_corner_space    # = 0
+        gint switcher_bottom_corner_space # = 0
+
+        _icon_size c_icon_size[<int>B_COUNT]
+        _icon_size c_glow_size  # one glow size for all buttons
+                                # (buttons will be centered in their glows)
+                                # active and inactive glow pixmaps are assumed to be of same size
+
+        gboolean stretch_sides
+        gint blur_type # = BLUR_TYPE_NONE
     ctypedef _window_settings window_settings
+
     cdef struct _frame_settings:
         void * engine_fs
         window_settings *ws
@@ -224,29 +176,37 @@ cdef extern from "emerald.h" nogil:
         alpha_color button_halo
         alpha_color text
         alpha_color text_halo
+
     cdef struct _rectangle:
         gint x1, y1, x2, y2
     ctypedef _rectangle rectangle_t
+
     cdef struct _button_fade_info:
-        gpointer * d
-        # needed by the timer function
+        gpointer * d# needed by the timer function
         cairo_t * cr
         double y1
-        int counters[B_T_COUNT*1]
-        # 0: not fading, > 0: fading in, < 0: fading out # max value: ws->button_fade_num_steps+1 (1 is reserved to indicate # fade-in initiation) # min value: -ws->button_fade_num_steps gboolean pulsating[B_T_COUNT]
+        int counters[<int>B_COUNT] # 0: not fading, > 0: fading in, < 0: fading out
+                                  # max value: ws->button_fade_num_steps+1 (1 is reserved to indicate
+                                  #                                         fade-in initiation)
+                                  # min value: -ws->button_fade_num_steps
+        gboolean pulsating[<int>B_T_COUNT]
         gint timer
         gboolean first_draw
     ctypedef _button_fade_info button_fade_info_t
+
     cdef struct _button_region_t:
-        gint base_x1, base_y1, base_x2, base_y2
-        # button coords with no glow gint glow_x1, glow_y1, glow_x2, glow_y2
-        # glow coordinates # holds whether this button's glow overlap with the other button's non-glow (base) area gboolean overlap_buttons[B_T_COUNT]
+        gint base_x1, base_y1, base_x2, base_y2 # button coords with no glow
+        gint glow_x1, glow_y1, glow_x2, glow_y2 # glow coordinates
+        
+        # holds whether this button's glow overlap with the other button's non-glow (base) area
+        gboolean overlap_buttons[<int>B_T_COUNT]
         GdkPixmap * bg_pixmap
     ctypedef _button_region_t button_region_t
+
     cdef struct _decor:
         Window event_windows[3][3]
-        Window button_windows[B_T_COUNT*1]
-        guint button_states[B_T_COUNT*1]
+        Window button_windows[<int>B_COUNT]
+        guint button_states[<int>B_COUNT]
         gint tobj_pos[3]
         gint tobj_size[3]
         gint tobj_item_pos[11]
@@ -272,17 +232,15 @@ cdef extern from "emerald.h" nogil:
         GtkWidget *force_quit_dialog
         frame_settings * fs
         void (*draw) (_decor *d)
-        button_region_t button_region[B_T_COUNT*1]
-        rectangle_t min_drawn_buttons_region
-        # minimal rectangle enclosing all drawn regions
+        button_region_t button_region[<int>B_COUNT]
+        rectangle_t min_drawn_buttons_region # minimal rectangle enclosing all drawn regions
         gboolean draw_only_buttons_region
-        gint button_last_drawn_state[B_T_COUNT*1]
-        # last drawn state or fade counter
+        gint button_last_drawn_state[<int>B_COUNT] # last drawn state or fade counter
         button_fade_info_t button_fade_info
         GdkPixmap * p_active
         GdkPixmap * p_active_buffer
         GdkPixmap * p_inactive
         GdkPixmap * p_inactive_buffer
-        button_region_t button_region_inact[B_T_COUNT*1]
+        button_region_t button_region_inact[<int>B_COUNT]
         gboolean only_change_active
     ctypedef _decor decor_t

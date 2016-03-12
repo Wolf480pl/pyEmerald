@@ -251,11 +251,9 @@ static CYTHON_INLINE float __PYX_NAN() {
 #include "pango/pangocairo.h"
 #include "cairo.h"
 #include "X11/Xlib.h"
+#include "decoration.h"
 #include "wnck.h"
 #include "titlebar.h"
-#include "string.h"
-#include "limits.h"
-#include "decoration.h"
 #include "emerald.h"
 #ifdef _OPENMP
 #include <omp.h>
@@ -618,12 +616,6 @@ static int __Pyx_InitStrings(__Pyx_StringTabEntry *t);
 /* Module declarations from '_c_window' */
 
 /* Module declarations from '_c_titlebar' */
-
-/* Module declarations from 'libc.string' */
-
-/* Module declarations from 'libc.limits' */
-
-/* Module declarations from '_c_decoration' */
 
 /* Module declarations from '_c_emerald' */
 

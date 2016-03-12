@@ -13,6 +13,7 @@ cdef extern from "wnck.h" nogil:
         WNCK_WINDOW_STATE_URGENT
         WNCK_WINDOW_STATE_ABOVE
         WNCK_WINDOW_STATE_BELOW
+
     ctypedef enum WnckWindowActions:
         WNCK_WINDOW_ACTION_MOVE
         WNCK_WINDOW_ACTION_RESIZE

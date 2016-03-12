@@ -30,3 +30,9 @@ cdef extern from "X11/Xlib.h" nogil:
     ctypedef unsigned long XID
     ctypedef XID Window
 
+cdef extern from "decoration.h" nogil:
+    ctypedef struct decor_extents_t:
+        int left
+        int right
+        int top
+        int bottom
