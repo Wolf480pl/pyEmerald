@@ -33,6 +33,8 @@
 
 #include "pixmap_icon.h"
 
+#include "_pyemerald.h"
+
 #include <config.h>
 
 #define SECT "pyemerald_settings"
@@ -920,9 +922,22 @@ fail:
 
 }
 
+gboolean cython_draw_frame(decor_t *d, cairo_t *cr) {
+
+    PyObject* pyCtx = PycairoContext_FromContext(cairo_reference(cr), &PycairoContext_Type, NULL);
+    if (!pyCtx) {
+        // This fool we've just called destroyed our context just because he was unable to wrap it...
+        print_python_error("Couldn't wrap cairo context.");
+        return FALSE;
+    }
+
+    pyemerald_draw_frame(d, pyCtx);
+}
+
 void engine_draw_frame (decor_t * d, cairo_t * cr)
 {
-    if (!python_draw_frame(d, cr)) {
+    //if (!python_draw_frame(d, cr)) {
+    if (!cython_draw_frame(d, cr)) {
         ((private_ws*) d->fs->ws->engine_ws)->py->draw = NULL; // Don't try python again
         fallback_draw_frame(d, cr);
     }
@@ -979,6 +994,9 @@ static gboolean init_python(private_ws* pws) {
         print_python_error("Couldn't import PyGObject C API");
         return FALSE;
     }
+
+    PyInit__pyemerald();
+    pyemerald_init();
 
     PyObject* pDrawFunc = get_python_func(pModule, "draw");
     if (!pDrawFunc) {
